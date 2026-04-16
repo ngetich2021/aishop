@@ -13,14 +13,6 @@ export async function createSupplierAction(
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-  const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
-    select: { role: true },
-  });
-  const role = profile?.role?.toLowerCase().trim();
-  if (role !== "admin" && role !== "owner" && role !== "manager")
-    return { success: false, error: "Only managers can add suppliers." };
-
   if (!data.name?.trim()) return { success: false, error: "Supplier name required." };
   if (!data.contact1?.trim()) return { success: false, error: "Primary contact required." };
 

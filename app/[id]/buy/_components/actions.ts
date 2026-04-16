@@ -23,11 +23,8 @@ export async function createBuyAction(
 
   const profile = await prisma.profile.findUnique({
     where:  { userId: session.user.id },
-    select: { role: true, fullName: true },
+    select: { fullName: true },
   });
-  const role = profile?.role?.toLowerCase().trim();
-  if (role !== "admin" && role !== "owner" && role !== "manager")
-    return { success: false, error: "Only managers can create purchase orders." };
 
   if (!data.supplierId) return { success: false, error: "Supplier required." };
   if (!data.items || data.items.length === 0) return { success: false, error: "At least one item required." };
@@ -62,11 +59,8 @@ export async function updateBuyStatusAction(
 
   const profile = await prisma.profile.findUnique({
     where:  { userId: session.user.id },
-    select: { role: true, fullName: true },
+    select: { fullName: true },
   });
-  const role = profile?.role?.toLowerCase().trim();
-  if (role !== "admin" && role !== "owner" && role !== "manager")
-    return { success: false, error: "Only managers can update purchase orders." };
 
   try {
     const buy = await prisma.buy.findUnique({
