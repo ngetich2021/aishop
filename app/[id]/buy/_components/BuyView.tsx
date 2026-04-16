@@ -247,7 +247,7 @@ function BuyModal({ shopId, suppliers: initialSuppliers, onClose }: {
 }
 
 // ── Main view ─────────────────────────────────────────────────────────────────
-export default function BuyView({ activeShop, isAdmin, isManager, buys, suppliers, stats }: Props) {
+export default function BuyView({ activeShop, isAdmin, buys, suppliers, stats }: Props) {
   const router = useRouter();
   const [search, setSearch]         = useState("");
   const [filterStatus, setStatus]   = useState("all");
@@ -349,93 +349,151 @@ export default function BuyView({ activeShop, isAdmin, isManager, buys, supplier
             </div>
           </div>
 
-          {/* Orders table */}
+          {/* Orders list */}
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             {filtered.length === 0 ? (
               <div className="py-24 text-center">
                 <ShoppingCart size={38} className="mx-auto mb-3 text-gray-200" strokeWidth={1} />
                 <p className="text-sm font-semibold text-gray-400">No purchase orders found</p>
-                {suppliers.length === 0 && isManager && (
+                {suppliers.length === 0 && (
                   <p className="text-xs text-gray-400 mt-1">Add a supplier first — use the "New Order" button and create one inline</p>
                 )}
               </div>
             ) : (
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-gray-200">
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Supplier</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* ── Mobile cards (< md) ─────────────────────────────── */}
+                <div className="divide-y divide-gray-100 md:hidden">
                   {filtered.map((b, i) => (
-                    <React.Fragment key={b.id}>
-                      {/* Main row */}
-                      <tr style={{ animationDelay: `${i * 0.03}s` }}
-                        className="buy-card bg-white hover:bg-slate-50 transition-colors border-b border-gray-100">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center text-orange-700 font-black text-sm shrink-0">
-                              {b.supplierName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-800 text-xs">{b.supplierName}</p>
-                              {b.authorizedBy && <p className="text-[0.65rem] text-gray-400">By {b.authorizedBy}</p>}
-                            </div>
+                    <div key={b.id} style={{ animationDelay: `${i * 0.03}s` }}
+                      className="buy-card p-4 space-y-3">
+                      {/* Top row: avatar + name + status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-700 font-black text-sm shrink-0">
+                            {b.supplierName.charAt(0).toUpperCase()}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-black text-orange-700 tabular-nums">KSh {(b.totalAmount + b.transportCost).toLocaleString()}</p>
-                          {b.transportCost > 0 && <p className="text-[0.65rem] text-gray-400">incl. KSh {b.transportCost.toLocaleString()} transport</p>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold capitalize ${STATUS_COLORS[b.status] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
-                            {b.status}
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-800 text-sm truncate">{b.supplierName}</p>
+                            {b.authorizedBy && <p className="text-[0.65rem] text-gray-400 truncate">By {b.authorizedBy}</p>}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 inline-block rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold capitalize ${STATUS_COLORS[b.status] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                          {b.status}
+                        </span>
+                      </div>
+                      {/* Items */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {b.items.map((item, j) => (
+                          <span key={j} className="flex items-center gap-1 text-[0.7rem] text-gray-600">
+                            <Package size={10} className="text-orange-400 shrink-0" />
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-gray-400">×{item.qty}</span>
+                            <span className="text-gray-500">@ KSh {item.price.toLocaleString()}</span>
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{b.date}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {b.status === "pending" && (
-                              <button
-                                onClick={() => handleStatus(b.id, "received")}
-                                disabled={updatingId === b.id}
-                                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg text-xs font-black transition whitespace-nowrap">
-                                {updatingId === b.id
-                                  ? <Loader2 size={11} className="animate-spin" />
-                                  : <CheckCircle2 size={11} />}
-                                Buy
-                              </button>
-                            )}
-                            <button onClick={e => open(b.id, e)}
-                              className={`rounded-lg p-1.5 transition-colors ${dd.id === b.id ? "bg-gray-200" : "hover:bg-gray-100 text-gray-400"}`}>
-                              <MoreVertical size={15} />
+                        ))}
+                      </div>
+                      {/* Bottom row: total + date + actions */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-base font-black text-orange-700 tabular-nums">KSh {(b.totalAmount + b.transportCost).toLocaleString()}</p>
+                          <p className="text-[0.65rem] text-gray-400">{b.date}{b.transportCost > 0 && ` · KSh ${b.transportCost.toLocaleString()} transport`}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {b.status === "pending" && (
+                            <button
+                              onClick={() => handleStatus(b.id, "received")}
+                              disabled={updatingId === b.id}
+                              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg text-xs font-black transition">
+                              {updatingId === b.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                              Buy
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* Items sub-row */}
-                      <tr className="bg-slate-50/60 border-b border-gray-100">
-                        <td colSpan={5} className="px-6 pb-3 pt-1">
-                          <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            {b.items.map((item, j) => (
-                              <span key={j} className="flex items-center gap-1 text-[0.7rem] text-gray-600">
-                                <Package size={10} className="text-orange-400 shrink-0" />
-                                <span className="font-medium">{item.name}</span>
-                                <span className="text-gray-400">×{item.qty}</span>
-                                <span className="text-gray-500">@ KSh {item.price.toLocaleString()}</span>
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    </React.Fragment>
+                          )}
+                          <button onClick={e => open(b.id, e)}
+                            className={`rounded-lg p-1.5 transition-colors ${dd.id === b.id ? "bg-gray-200" : "hover:bg-gray-100 text-gray-400"}`}>
+                            <MoreVertical size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                {/* ── Desktop table (≥ md) ────────────────────────────── */}
+                <table className="hidden md:table w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Supplier</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Total</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-gray-400">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((b, i) => (
+                      <React.Fragment key={b.id}>
+                        <tr style={{ animationDelay: `${i * 0.03}s` }}
+                          className="buy-card bg-white hover:bg-slate-50 transition-colors border-b border-gray-100">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center text-orange-700 font-black text-sm shrink-0">
+                                {b.supplierName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-xs">{b.supplierName}</p>
+                                {b.authorizedBy && <p className="text-[0.65rem] text-gray-400">By {b.authorizedBy}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-black text-orange-700 tabular-nums">KSh {(b.totalAmount + b.transportCost).toLocaleString()}</p>
+                            {b.transportCost > 0 && <p className="text-[0.65rem] text-gray-400">incl. KSh {b.transportCost.toLocaleString()} transport</p>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold capitalize ${STATUS_COLORS[b.status] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                              {b.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{b.date}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {b.status === "pending" && (
+                                <button
+                                  onClick={() => handleStatus(b.id, "received")}
+                                  disabled={updatingId === b.id}
+                                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg text-xs font-black transition whitespace-nowrap">
+                                  {updatingId === b.id
+                                    ? <Loader2 size={11} className="animate-spin" />
+                                    : <CheckCircle2 size={11} />}
+                                  Buy
+                                </button>
+                              )}
+                              <button onClick={e => open(b.id, e)}
+                                className={`rounded-lg p-1.5 transition-colors ${dd.id === b.id ? "bg-gray-200" : "hover:bg-gray-100 text-gray-400"}`}>
+                                <MoreVertical size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr className="bg-slate-50/60 border-b border-gray-100">
+                          <td colSpan={5} className="px-6 pb-3 pt-1">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              {b.items.map((item, j) => (
+                                <span key={j} className="flex items-center gap-1 text-[0.7rem] text-gray-600">
+                                  <Package size={10} className="text-orange-400 shrink-0" />
+                                  <span className="font-medium">{item.name}</span>
+                                  <span className="text-gray-400">×{item.qty}</span>
+                                  <span className="text-gray-500">@ KSh {item.price.toLocaleString()}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
 

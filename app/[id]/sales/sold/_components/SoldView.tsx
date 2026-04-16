@@ -96,7 +96,6 @@ function useTableDropdown() {
 function ReceiptModal({
   sale, shop, onClose, onPrinted,
 }: { sale: Sale; shop: Shop; onClose: () => void; onPrinted: () => void }) {
-  const printRef = useRef<HTMLDivElement>(null);
   const saleNo   = sale.id.slice(-8).toUpperCase();
   const meta     = methodMeta(sale.paymentMethod);
 
@@ -136,9 +135,7 @@ function ReceiptModal({
   `;
 
   const handlePrint = async () => {
-    const win = window.open("", "_blank", "width=420,height=900");
-    if (!win) return;
-    win.document.write(`<html><head><title>Receipt — ${saleNo}</title>
+    const html = `<html><head><title>Receipt — ${saleNo}</title>
       <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Courier New',monospace;font-size:12px;padding:16px;max-width:360px}
@@ -147,8 +144,16 @@ function ReceiptModal({
         ${copyBlock("CUSTOMER COPY")}
         <div class="page-break"></div>
         ${copyBlock("SHOP COPY")}
-      </body></html>`);
-    win.document.close(); win.focus(); win.print(); win.close();
+      </body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0";
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => iframe.remove(), 1500);
+    };
+    document.body.appendChild(iframe);
     await markSalePrintedAction(sale.id, shop.id);
     onPrinted();
   };
@@ -283,9 +288,7 @@ function NewSaleReceiptModal({
   const handlePrint = () => {
     const content = printRef.current?.innerHTML;
     if (!content) return;
-    const win = window.open("", "_blank", "width=420,height=800");
-    if (!win) return;
-    win.document.write(`<html><head><title>Receipt — ${saleNo}</title>
+    const html = `<html><head><title>Receipt — ${saleNo}</title>
       <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Courier New',monospace;font-size:12px;padding:16px;max-width:360px}
@@ -294,8 +297,16 @@ function NewSaleReceiptModal({
         .bold{font-weight:bold}.total-row{font-size:14px;font-weight:900}
         .copy-header{text-align:center;font-size:10px;border:1px dashed #999;padding:3px;margin-bottom:8px}
         .page-break{page-break-after:always;border-top:2px dashed #000;margin:16px 0 8px}
-      </style></head><body>${content}</body></html>`);
-    win.document.close(); win.focus(); win.print(); win.close();
+      </style></head><body>${content}</body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0";
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => iframe.remove(), 1500);
+    };
+    document.body.appendChild(iframe);
     onClose();
   };
 

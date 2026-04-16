@@ -272,25 +272,27 @@ export default function WalletView({ activeShop, isAdmin, balance, paymentsBalan
         <div className="mx-auto max-w-screen-lg space-y-5">
 
           {/* ── Header ──────────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between rounded-2xl border bg-white px-5 py-4 shadow-sm">
-            <div>
-              <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                <Wallet size={22} className="text-indigo-600" /> Wallet
-              </h1>
-              <p className="text-xs text-gray-400 mt-0.5">{activeShop.name} · {activeShop.location}</p>
+          <div className="rounded-2xl border bg-white px-5 py-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                  <Wallet size={22} className="text-indigo-600" /> Wallet
+                </h1>
+                <p className="text-xs text-gray-400 mt-0.5">{activeShop.name} · {activeShop.location}</p>
+              </div>
             </div>
             {isAdmin && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button onClick={() => setModal("deposit")}
-                  className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm">
+                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm">
                   <ArrowUpCircle size={13} /> Deposit
                 </button>
                 <button onClick={() => setModal("from_payments")}
-                  className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-sm">
+                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-sm">
                   <ArrowLeftRight size={13} /> From Payments
                 </button>
                 <button onClick={() => setModal("withdraw")}
-                  className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition shadow-sm">
+                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition shadow-sm">
                   <ArrowDownCircle size={13} /> Withdraw
                 </button>
               </div>
