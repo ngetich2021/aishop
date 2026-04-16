@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   title: "Kwenik",
   description: "Business management platform",
   manifest: "/manifest.json",
+  icons: { icon: "/branton_logo.png", apple: "/branton_logo.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Kwenik" },
   formatDetection: { telephone: false },
   themeColor: "#2563eb",
