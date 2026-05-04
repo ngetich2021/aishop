@@ -12,6 +12,7 @@ import {
 import { useRouter }      from "next/navigation";
 import { createPortal }   from "react-dom";
 import { saveExpenseAction, deleteExpenseAction } from "./actions";
+import { usePlan } from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Expense = {
@@ -202,6 +203,7 @@ export default function ExpensesView({
   activeShop, isAdmin, isManager, walletBalance, currentUserName, expenses, stats,
 }: Props) {
   const router  = useRouter();
+  const { isDemo } = usePlan();
   const [search,     setSearch]     = useState("");
   const [filterCat,  setFilterCat]  = useState("all");
   const [sheet,      setSheet]      = useState<{ mode: "add"|"edit"|"view"; expense?: Expense } | null>(null);
@@ -278,7 +280,9 @@ export default function ExpensesView({
             </div>
             {isManager && (
               <button onClick={() => setSheet({ mode: "add" })}
-                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-colors">
+                disabled={isDemo}
+                title={isDemo ? "Upgrade your plan to add expenses" : undefined}
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 <Plus size={17} /> Add Expense
               </button>
             )}

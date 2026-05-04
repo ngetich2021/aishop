@@ -183,7 +183,7 @@ export type ProfileGroupByOutputType = {
   userId: string
   role: string
   designation: string | null
-  allowedRoutes: string[]
+  allowedRoutes: runtime.JsonValue
   fullName: string | null
   email: string | null
   contact1: string | null
@@ -218,7 +218,7 @@ export type ProfileWhereInput = {
   userId?: Prisma.StringFilter<"Profile"> | string
   role?: Prisma.StringFilter<"Profile"> | string
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
-  allowedRoutes?: Prisma.StringNullableListFilter<"Profile">
+  allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
   email?: Prisma.StringNullableFilter<"Profile"> | string | null
   contact1?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -253,7 +253,7 @@ export type ProfileWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProfileWhereInput | Prisma.ProfileWhereInput[]
   role?: Prisma.StringFilter<"Profile"> | string
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
-  allowedRoutes?: Prisma.StringNullableListFilter<"Profile">
+  allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
   email?: Prisma.StringNullableFilter<"Profile"> | string | null
   contact1?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -289,7 +289,7 @@ export type ProfileScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringWithAggregatesFilter<"Profile"> | string
   role?: Prisma.StringWithAggregatesFilter<"Profile"> | string
   designation?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
-  allowedRoutes?: Prisma.StringNullableListFilter<"Profile">
+  allowedRoutes?: Prisma.JsonWithAggregatesFilter<"Profile">
   fullName?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
   contact1?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
@@ -302,7 +302,7 @@ export type ProfileScalarWhereWithAggregatesInput = {
 export type ProfileCreateInput = {
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -317,7 +317,7 @@ export type ProfileUncheckedCreateInput = {
   userId: string
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -330,7 +330,7 @@ export type ProfileUncheckedCreateInput = {
 export type ProfileUpdateInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -345,7 +345,7 @@ export type ProfileUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -359,7 +359,7 @@ export type ProfileCreateManyInput = {
   userId: string
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -372,7 +372,7 @@ export type ProfileCreateManyInput = {
 export type ProfileUpdateManyMutationInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -385,7 +385,7 @@ export type ProfileUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -398,14 +398,6 @@ export type ProfileUncheckedUpdateManyInput = {
 export type ProfileNullableScalarRelationFilter = {
   is?: Prisma.ProfileWhereInput | null
   isNot?: Prisma.ProfileWhereInput | null
-}
-
-export type StringNullableListFilter<$PrismaModel = never> = {
-  equals?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
-  has?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
-  hasEvery?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  hasSome?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  isEmpty?: boolean
 }
 
 export type ProfileCountOrderByAggregateInput = {
@@ -490,15 +482,6 @@ export type ProfileUncheckedUpdateOneWithoutUserNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProfileUpdateToOneWithWhereWithoutUserInput, Prisma.ProfileUpdateWithoutUserInput>, Prisma.ProfileUncheckedUpdateWithoutUserInput>
 }
 
-export type ProfileCreateallowedRoutesInput = {
-  set: string[]
-}
-
-export type ProfileUpdateallowedRoutesInput = {
-  set?: string[]
-  push?: string | string[]
-}
-
 export type ProfileCreateNestedManyWithoutShopInput = {
   create?: Prisma.XOR<Prisma.ProfileCreateWithoutShopInput, Prisma.ProfileUncheckedCreateWithoutShopInput> | Prisma.ProfileCreateWithoutShopInput[] | Prisma.ProfileUncheckedCreateWithoutShopInput[]
   connectOrCreate?: Prisma.ProfileCreateOrConnectWithoutShopInput | Prisma.ProfileCreateOrConnectWithoutShopInput[]
@@ -544,7 +527,7 @@ export type ProfileUncheckedUpdateManyWithoutShopNestedInput = {
 export type ProfileCreateWithoutUserInput = {
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -557,7 +540,7 @@ export type ProfileCreateWithoutUserInput = {
 export type ProfileUncheckedCreateWithoutUserInput = {
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -586,7 +569,7 @@ export type ProfileUpdateToOneWithWhereWithoutUserInput = {
 export type ProfileUpdateWithoutUserInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -599,7 +582,7 @@ export type ProfileUpdateWithoutUserInput = {
 export type ProfileUncheckedUpdateWithoutUserInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -612,7 +595,7 @@ export type ProfileUncheckedUpdateWithoutUserInput = {
 export type ProfileCreateWithoutShopInput = {
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -626,7 +609,7 @@ export type ProfileUncheckedCreateWithoutShopInput = {
   userId: string
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -642,7 +625,6 @@ export type ProfileCreateOrConnectWithoutShopInput = {
 
 export type ProfileCreateManyShopInputEnvelope = {
   data: Prisma.ProfileCreateManyShopInput | Prisma.ProfileCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type ProfileUpsertWithWhereUniqueWithoutShopInput = {
@@ -668,7 +650,7 @@ export type ProfileScalarWhereInput = {
   userId?: Prisma.StringFilter<"Profile"> | string
   role?: Prisma.StringFilter<"Profile"> | string
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
-  allowedRoutes?: Prisma.StringNullableListFilter<"Profile">
+  allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
   email?: Prisma.StringNullableFilter<"Profile"> | string | null
   contact1?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -682,7 +664,7 @@ export type ProfileCreateManyShopInput = {
   userId: string
   role?: string
   designation?: string | null
-  allowedRoutes?: Prisma.ProfileCreateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
   email?: string | null
   contact1?: string | null
@@ -694,7 +676,7 @@ export type ProfileCreateManyShopInput = {
 export type ProfileUpdateWithoutShopInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -708,7 +690,7 @@ export type ProfileUncheckedUpdateWithoutShopInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -721,7 +703,7 @@ export type ProfileUncheckedUpdateManyWithoutShopInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allowedRoutes?: Prisma.ProfileUpdateallowedRoutesInput | string[]
+  allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact1?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -818,7 +800,7 @@ export type $ProfilePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     userId: string
     role: string
     designation: string | null
-    allowedRoutes: string[]
+    allowedRoutes: runtime.JsonValue
     fullName: string | null
     email: string | null
     contact1: string | null
@@ -1254,7 +1236,7 @@ export interface ProfileFieldRefs {
   readonly userId: Prisma.FieldRef<"Profile", 'String'>
   readonly role: Prisma.FieldRef<"Profile", 'String'>
   readonly designation: Prisma.FieldRef<"Profile", 'String'>
-  readonly allowedRoutes: Prisma.FieldRef<"Profile", 'String[]'>
+  readonly allowedRoutes: Prisma.FieldRef<"Profile", 'Json'>
   readonly fullName: Prisma.FieldRef<"Profile", 'String'>
   readonly email: Prisma.FieldRef<"Profile", 'String'>
   readonly contact1: Prisma.FieldRef<"Profile", 'String'>
@@ -1496,7 +1478,6 @@ export type ProfileCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * The data used to create many Profiles.
    */
   data: Prisma.ProfileCreateManyInput | Prisma.ProfileCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1515,7 +1496,6 @@ export type ProfileCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    * The data used to create many Profiles.
    */
   data: Prisma.ProfileCreateManyInput | Prisma.ProfileCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

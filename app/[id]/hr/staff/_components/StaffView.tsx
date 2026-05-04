@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useTransition, useActionState, useRef, useEffect } from "react";
+import { useState, useTransition, useActionState, useEffect } from "react";
 import { useRouter }      from "next/navigation";
 import Image              from "next/image";
 import {
   Plus, X, Loader2, Search, Edit2, Trash2,
   Phone, Banknote, Users, TrendingDown, ShieldCheck,
-  ShieldOff, ChevronDown, Tags, CreditCard, CheckCircle2, Clock, XCircle,
+  ShieldOff, Tags, CreditCard, CheckCircle2, Clock, XCircle, Mail, Send,
 } from "lucide-react";
 import { NAV_SECTIONS }          from "@/lib/permissions";
-import { saveStaffAction, deleteStaffAction, deleteRoleAction } from "./actions";
+import { saveStaffAction, deleteStaffAction, deleteRoleAction, sendStaffInviteAction, cancelStaffInviteAction, findUserByEmailAction } from "./actions";
 import { requestAdvanceAction }   from "../../advance/_components/actions";
 import AssignDesignationModal from "./AssignDesignationModal";
 import RoleFormModal          from "./RoleFormModal";
+import { usePlan }            from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type StaffMember = {
@@ -23,10 +24,10 @@ type StaffMember = {
   designation: string | null; allowedRoutes: string[]; profileRole: string;
   totalAdvances: number; paidSalaries: number; createdAt: string;
 };
-type RoleRecord     = { id: string; name: string; description: string; allowedRoutes: string[] };
-type CandidateUser  = { id: string; name: string | null; email: string | null; image: string | null };
-type ActiveShop     = { id: string; name: string; location: string };
-type Profile        = { role: string; fullName: string };
+type RoleRecord    = { id: string; name: string; description: string; allowedRoutes: string[] };
+type PendingInvite = { id: string; email: string; role: string; fullName: string | null; createdAt: string; expiresAt: string };
+type ActiveShop    = { id: string; name: string; location: string };
+type Profile       = { role: string; fullName: string };
 
 type MyAdvance = {
   id: string; amount: number; date: string;
@@ -41,7 +42,7 @@ type Props = {
   profile:        Profile;
   staffList:      StaffMember[];
   rolesList:      RoleRecord[];
-  candidateUsers: CandidateUser[];
+  pendingInvites: PendingInvite[];
   stats: { total: number; totalSalaryBill: number; totalAdvances: number };
   myStaff:    { id: string; baseSalary: number; shopId: string } | null;
   myAdvances: MyAdvance[];
@@ -66,179 +67,307 @@ function roleBadge(role: string) {
   );
 }
 
-// ── Add Staff Modal ───────────────────────────────────────────────────────────
+// ── Add Staff Modal (Direct Add + Invite tabs) ────────────────────────────────
 function AddStaffModal({
-  shopId, candidateUsers, onClose, onDone,
-}: { shopId: string; candidateUsers: CandidateUser[]; onClose: () => void; onDone: () => void }) {
-  const [selUserId, setSelUserId] = useState("");
-  const [fullName,  setFullName]  = useState("");
-  const [salary,    setSalary]    = useState("");
-  const [tel1,      setTel1]      = useState("");
-  const [tel2,      setTel2]      = useState("");
-  const [mpesaNo,   setMpesaNo]   = useState("");
-  const [search,    setSearch]    = useState("");
-  const [showDrop,  setShowDrop]  = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const [state, action, pending] = useActionState(saveStaffAction, { success: false });
-
-  useEffect(() => { if (state?.success) onDone(); }, [state?.success]); // eslint-disable-line
-
-  const filteredUsers = candidateUsers.filter(u =>
-    `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(search.toLowerCase())
-  );
-  const selectedUser = candidateUsers.find(u => u.id === selUserId);
-
-  const handleUserSelect = (u: CandidateUser) => {
-    setSelUserId(u.id);
-    if (u.name && !fullName) setFullName(u.name);
-    setShowDrop(false);
-    setSearch("");
-  };
+  shopId, rolesList, onClose, onDone,
+}: { shopId: string; rolesList: RoleRecord[]; onClose: () => void; onDone: () => void }) {
+  const [tab, setTab] = useState<"direct"|"invite">("direct");
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4">
-      <form
-        ref={formRef}
-        action={action}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-      >
-        <input type="hidden" name="shopId"  value={shopId}   />
-        <input type="hidden" name="userId"  value={selUserId} />
-
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        {/* Tab header */}
         <div className="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-indigo-50 to-white">
-          <div>
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <Users size={16} className="text-indigo-600" /> Add Staff Member
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Select a registered user to add as staff</p>
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <button
+              onClick={() => setTab("direct")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === "direct" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Direct Add
+            </button>
+            <button
+              onClick={() => setTab("invite")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === "invite" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Send Invite
+            </button>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
             <X size={18} />
           </button>
         </div>
+        {tab === "direct"
+          ? <DirectAddForm shopId={shopId} rolesList={rolesList} onClose={onClose} onDone={onDone} />
+          : <InviteForm    shopId={shopId} rolesList={rolesList} onClose={onClose} onDone={onDone} />}
+      </div>
+    </div>
+  );
+}
 
-        <div className="p-5 space-y-4">
-          {/* User picker */}
-          <div className="relative">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select User *</label>
-            <button
-              type="button"
-              onClick={() => setShowDrop(v => !v)}
-              className="w-full flex items-center justify-between border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 bg-white hover:border-indigo-300 transition-colors"
-            >
-              {selectedUser ? (
-                <span className="flex items-center gap-2">
-                  {selectedUser.image
-                    ? <Image src={selectedUser.image} alt="" width={20} height={20} className="rounded-full" />
-                    : <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[0.6rem] font-black flex items-center justify-center">{initials(selectedUser.name ?? "?")}</div>
-                  }
-                  <span className="font-medium">{selectedUser.name ?? selectedUser.email}</span>
-                </span>
-              ) : (
-                <span className="text-gray-400">Choose a user…</span>
-              )}
-              <ChevronDown size={14} className="text-gray-400" />
-            </button>
+// ── Direct Add Form ───────────────────────────────────────────────────────────
+function DirectAddForm({
+  shopId, rolesList, onClose, onDone,
+}: { shopId: string; rolesList: RoleRecord[]; onClose: () => void; onDone: () => void }) {
+  const [email,       setEmail]       = useState("");
+  const [foundUser,   setFoundUser]   = useState<{ userId: string; name: string; email: string; image: string | null } | null>(null);
+  const [searching,   setSearching]   = useState(false);
+  const [notFound,    setNotFound]    = useState(false);
+  const [fullName,    setFullName]    = useState("");
+  const [salary,      setSalary]      = useState("");
+  const [tel1,        setTel1]        = useState("");
+  const [designation, setDesignation] = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
 
-            {showDrop && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                <div className="p-2 border-b">
-                  <input
-                    autoFocus
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search users…"
-                    className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-400"
-                  />
-                </div>
-                <div className="max-h-48 overflow-y-auto">
-                  {filteredUsers.length === 0
-                    ? <p className="text-sm text-gray-400 text-center py-4">No users found</p>
-                    : filteredUsers.map(u => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => handleUserSelect(u)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-indigo-50 transition-colors text-left"
-                        >
-                          {u.image
-                            ? <Image src={u.image} alt="" width={28} height={28} className="rounded-full shrink-0" />
-                            : <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center shrink-0">{initials(u.name ?? "?")}</div>
-                          }
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{u.name ?? "—"}</p>
-                            <p className="text-xs text-gray-400 truncate">{u.email}</p>
-                          </div>
-                        </button>
-                      ))
-                  }
-                </div>
-              </div>
-            )}
+  const handleLookup = async () => {
+    if (!email.trim()) return;
+    setSearching(true); setNotFound(false); setFoundUser(null); setError(null);
+    const res = await findUserByEmailAction(email.trim());
+    setSearching(false);
+    if (!res) { setNotFound(true); return; }
+    if (res.alreadyStaff) { setError("This user is already a staff member."); return; }
+    setFoundUser(res);
+    setFullName(res.name || "");
+  };
+
+  const handleSubmit = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (!foundUser) return;
+    setError(null); setLoading(true);
+    const fd = new FormData();
+    fd.set("userId",      foundUser.userId);
+    fd.set("shopId",      shopId);
+    fd.set("fullName",    fullName || foundUser.name);
+    fd.set("baseSalary",  salary || "0");
+    fd.set("tel1",        tel1);
+    fd.set("tel2",        "");
+    fd.set("mpesaNo",     "");
+    if (designation) fd.set("designation", designation);
+    const res = await saveStaffAction({ success: false }, fd);
+    setLoading(false);
+    if (res.success) onDone(); else setError(res.error ?? "Failed to add staff.");
+  };
+
+  return (
+    <div className="p-5 space-y-4">
+      <p className="text-xs text-gray-500">Staff must already have a Kwenik account (signed in with Google at least once).</p>
+
+      {/* Email lookup */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Staff Email *</label>
+        <div className="flex gap-2">
+          <input
+            type="email" value={email} onChange={e => { setEmail(e.target.value); setFoundUser(null); setNotFound(false); }}
+            placeholder="staff@example.com"
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400"
+            onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleLookup())}
+          />
+          <button type="button" onClick={handleLookup} disabled={searching || !email.trim()}
+            className="px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors">
+            {searching ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+          </button>
+        </div>
+        {notFound && <p className="text-xs text-amber-600 mt-1.5">No account found with this email. Use &quot;Send Invite&quot; instead.</p>}
+      </div>
+
+      {foundUser && (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Found user badge */}
+          <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+            {foundUser.image
+              ? <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0"><Image src={foundUser.image} alt="" fill sizes="32px" className="object-cover"/></div>
+              : <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-black shrink-0">{foundUser.name.slice(0,2).toUpperCase()}</div>}
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-900 truncate">{foundUser.name || "—"}</p>
+              <p className="text-xs text-gray-500 truncate">{foundUser.email}</p>
+            </div>
+            <CheckCircle2 size={16} className="text-green-600 shrink-0 ml-auto" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Full Name *</label>
-            <input name="fullName" value={fullName} onChange={e => setFullName(e.target.value)}
-              placeholder="e.g. Jane Wanjiku"
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
+            <input value={fullName} onChange={e => setFullName(e.target.value)}
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Base Salary (KSh) *</label>
-              <input name="baseSalary" value={salary} onChange={e => setSalary(e.target.value)}
-                type="number" min={0} placeholder="25000"
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Base Salary (KSh)</label>
+              <input value={salary} onChange={e => setSalary(e.target.value)} type="number" min={0} placeholder="25000"
                 className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone 1</label>
-              <input name="tel1" value={tel1} onChange={e => setTel1(e.target.value)}
-                placeholder="0700 000 000"
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Phone</label>
+              <input value={tel1} onChange={e => setTel1(e.target.value)} placeholder="0700 000 000"
                 className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone 2</label>
-              <input name="tel2" value={tel2} onChange={e => setTel2(e.target.value)}
-                placeholder="0711 000 000"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">M-Pesa No.</label>
-              <input name="mpesaNo" value={mpesaNo} onChange={e => setMpesaNo(e.target.value)}
-                placeholder="0700 000 000"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
-            </div>
+          {/* Designation — auto-applies allowed routes */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Designation <span className="text-indigo-500 font-normal">(sets access routes instantly)</span>
+            </label>
+            <select value={designation} onChange={e => setDesignation(e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 bg-white">
+              <option value="">None — assign later</option>
+              {rolesList.map(r => (
+                <option key={r.id} value={r.name}>
+                  {r.name}{r.allowedRoutes.length > 0 ? ` (${r.allowedRoutes.length} sections)` : ""}
+                </option>
+              ))}
+            </select>
+            {designation && rolesList.find(r => r.name === designation) && (
+              <p className="text-xs text-indigo-600 mt-1">
+                ✓ Staff will immediately access {rolesList.find(r => r.name === designation)!.allowedRoutes.length} section(s)
+              </p>
+            )}
+            {!designation && <p className="text-xs text-amber-600 mt-1">Without a designation staff won't have route access until assigned.</p>}
           </div>
 
-          {state?.error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-              {state.error}
-            </p>
-          )}
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={pending || !selUserId}
+            <button type="submit" disabled={loading}
               className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
-              {pending ? <Loader2 size={16} className="animate-spin" /> : "Add Staff"}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <><Users size={14} /> Add Staff</>}
             </button>
           </div>
-        </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 }
 
+// ── Invite Form (was InviteStaffModal body) ───────────────────────────────────
+function InviteForm({
+  shopId, rolesList, onClose, onDone,
+}: { shopId: string; rolesList: RoleRecord[]; onClose: () => void; onDone: () => void }) {
+  const [email,       setEmail]       = useState("");
+  const [fullName,    setFullName]    = useState("");
+  const [salary,      setSalary]      = useState("");
+  const [tel1,        setTel1]        = useState("");
+  const [designation, setDesignation] = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [inviteUrl,   setInviteUrl]   = useState<string | null>(null);
+  const [emailFailed, setEmailFailed] = useState(false);
+  const [copied,      setCopied]      = useState(false);
+
+  const handleSubmit = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const res = await sendStaffInviteAction({
+      shopId,
+      email,
+      fullName:    fullName    || undefined,
+      baseSalary:  salary ? Number(salary) : undefined,
+      tel1:        tel1        || undefined,
+      designation: designation || undefined,
+    });
+    setLoading(false);
+    if (res.success) {
+      setInviteUrl(res.inviteUrl ?? null);
+      setEmailFailed(!!res.emailError);
+    } else {
+      setError(res.error ?? "Failed to send invite.");
+    }
+  };
+
+  const handleCopy = () => {
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (inviteUrl) {
+    return (
+      <div className="p-7 space-y-4">
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${emailFailed ? "bg-amber-100" : "bg-green-100"}`}>
+            {emailFailed ? <Mail size={26} className="text-amber-500" /> : <CheckCircle2 size={26} className="text-green-600" />}
+          </div>
+          <h2 className="font-bold text-gray-900 text-lg">{emailFailed ? "Invite created" : "Invite sent!"}</h2>
+          <p className="text-sm text-gray-500">
+            {emailFailed
+              ? <>Email delivery failed — share this link with <strong>{email}</strong> directly:</>
+              : <>Email sent to <strong>{email}</strong>. Also copy the link as a backup:</>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+          <span className="text-xs text-gray-600 truncate flex-1 font-mono">{inviteUrl}</span>
+          <button onClick={handleCopy} className="shrink-0 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <button onClick={onDone} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-sm font-bold transition-colors">
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="p-5 space-y-4">
+      <p className="text-xs text-gray-500 flex items-center gap-1"><Mail size={12}/> An email invite link will be sent to their inbox.</p>
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Address *</label>
+        <div className="relative">
+          <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="staff@example.com"
+            className="w-full pl-9 pr-3 border border-gray-300 rounded-xl py-2.5 text-sm outline-none focus:border-indigo-400" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Full Name</label>
+        <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Jane Wanjiku"
+          className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Base Salary (KSh)</label>
+          <input value={salary} onChange={e => setSalary(e.target.value)} type="number" min={0} placeholder="25000"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone</label>
+          <input value={tel1} onChange={e => setTel1(e.target.value)} placeholder="0700 000 000"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Designation</label>
+        <select value={designation} onChange={e => setDesignation(e.target.value)}
+          className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 bg-white">
+          <option value="">None — assign later</option>
+          {rolesList.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+        </select>
+      </div>
+      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onClose}
+          className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button type="submit" disabled={loading}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <><Send size={14} /> Send Invite</>}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ── Edit Staff Modal ──────────────────────────────────────────────────────────
-function EditStaffModal({ staff, onClose, onDone }: { staff: StaffMember; onClose: () => void; onDone: () => void }) {
+function EditStaffModal({
+  staff, rolesList, onClose, onDone,
+}: { staff: StaffMember; rolesList: RoleRecord[]; onClose: () => void; onDone: () => void }) {
   const [state, action, pending] = useActionState(saveStaffAction, { success: false });
 
   useEffect(() => { if (state?.success) onDone(); }, [state?.success]); // eslint-disable-line
@@ -295,6 +424,22 @@ function EditStaffModal({ staff, onClose, onDone }: { staff: StaffMember; onClos
                 className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400" />
             </div>
           </div>
+          {rolesList.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Designation <span className="text-indigo-500 font-normal">(updates access routes)</span>
+              </label>
+              <select name="designation" defaultValue={staff.designation ?? ""}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 bg-white">
+                <option value="">None — no route change</option>
+                {rolesList.map(r => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}{r.allowedRoutes.length > 0 ? ` (${r.allowedRoutes.length} sections)` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {state?.error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{state.error}</p>
           )}
@@ -351,7 +496,7 @@ function MyAdvancePanel({
   const totalAdv = myAdvances.filter(a => ["approved","paid"].includes(a.status))
                              .reduce((s, a) => s + a.amount, 0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setError(null);
     const amt = Number(amount);
@@ -466,18 +611,20 @@ function MyAdvancePanel({
 // ── Main component ────────────────────────────────────────────────────────────
 export default function StaffView({
   shopId, activeShop, isManager, isAdmin,
-  staffList, rolesList, candidateUsers, stats,
+  staffList, rolesList, pendingInvites, stats,
   myStaff, myAdvances,
 }: Props) {
   const router = useRouter();
-  const [search,      setSearch]      = useState("");
-  const [showAdd,     setShowAdd]     = useState(false);
-  const [editMember,  setEditMember]  = useState<StaffMember | null>(null);
+  const { isDemo } = usePlan();
+  const [search,       setSearch]       = useState("");
+  const [showAdd,      setShowAdd]      = useState(false);
+  const [editMember,   setEditMember]   = useState<StaffMember | null>(null);
   const [accessMember, setAccessMember] = useState<StaffMember | null>(null);
-  const [roleForm,    setRoleForm]    = useState<RoleRecord | null | "new">(null);
-  const [removingId,  setRemovingId]  = useState<string | null>(null);
-  const [isPending,   startTransition] = useTransition();
-  const [tab,         setTab]         = useState<"staff"|"designations">("staff");
+  const [roleForm,     setRoleForm]     = useState<RoleRecord | null | "new">(null);
+  const [removingId,   setRemovingId]   = useState<string | null>(null);
+  const [cancelingInvId, setCancelingInvId] = useState<string | null>(null);
+  const [isPending,    startTransition] = useTransition();
+  const [tab,          setTab]          = useState<"staff"|"designations">("staff");
 
   const handleRemove = (member: StaffMember) => {
     if (!confirm(`Remove ${member.fullName} from this shop?\nThis deletes their staff record but not their account.`)) return;
@@ -494,6 +641,16 @@ export default function StaffView({
     startTransition(async () => {
       const res = await deleteRoleAction({ roleId: role.id, shopId });
       if (res.success) router.refresh(); else alert(res.error ?? "Delete failed");
+    });
+  };
+
+  const handleCancelInvite = (inviteId: string) => {
+    if (!confirm("Cancel this invite?")) return;
+    setCancelingInvId(inviteId);
+    startTransition(async () => {
+      const res = await cancelStaffInviteAction({ inviteId, shopId });
+      setCancelingInvId(null);
+      if (res.success) router.refresh(); else alert(res.error ?? "Cancel failed");
     });
   };
 
@@ -520,7 +677,9 @@ export default function StaffView({
             {isAdmin && (
               <button
                 onClick={() => setShowAdd(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-all"
+                disabled={isDemo}
+                title={isDemo ? "Upgrade your plan to add staff" : undefined}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Plus size={17} /> Add Staff
               </button>
@@ -600,7 +759,9 @@ export default function StaffView({
                     </p>
                     {isAdmin && staffList.length === 0 && (
                       <button onClick={() => setShowAdd(true)}
-                        className="mt-4 inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+                        disabled={isDemo}
+                        title={isDemo ? "Upgrade your plan to add staff" : undefined}
+                        className="mt-4 inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                         <Plus size={15} /> Add First Staff Member
                       </button>
                     )}
@@ -750,6 +911,36 @@ export default function StaffView({
             </>
           )}
 
+          {/* ── Pending invites ────────────────────────────────────────────────── */}
+          {tab === "staff" && isAdmin && pendingInvites.length > 0 && (
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b border-amber-100 bg-amber-50 flex items-center gap-2">
+                <Mail size={14} className="text-amber-600" />
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">
+                  Pending Invites ({pendingInvites.length})
+                </span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {pendingInvites.map(inv => (
+                  <div key={inv.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{inv.fullName ?? inv.email}</p>
+                      <p className="text-xs text-gray-400 truncate">{inv.email} · {inv.role} · expires {inv.expiresAt}</p>
+                    </div>
+                    <button
+                      onClick={() => handleCancelInvite(inv.id)}
+                      disabled={cancelingInvId === inv.id}
+                      className="shrink-0 flex items-center gap-1 text-xs text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {cancelingInvId === inv.id ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+                      Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Designations tab ───────────────────────────────────────────────── */}
           {tab === "designations" && (
             <>
@@ -760,7 +951,9 @@ export default function StaffView({
                 {isAdmin && (
                   <button
                     onClick={() => setRoleForm("new")}
-                    className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                    disabled={isDemo}
+                    title={isDemo ? "Upgrade your plan to create designations" : undefined}
+                    className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Plus size={15} /> New Designation
                   </button>
@@ -773,7 +966,9 @@ export default function StaffView({
                   <p className="text-gray-500 font-medium">No designations yet</p>
                   {isAdmin && (
                     <button onClick={() => setRoleForm("new")}
-                      className="mt-4 inline-flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors">
+                      disabled={isDemo}
+                      title={isDemo ? "Upgrade your plan to create designations" : undefined}
+                      className="mt-4 inline-flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                       <Plus size={15} /> Create First Designation
                     </button>
                   )}
@@ -845,7 +1040,7 @@ export default function StaffView({
       {showAdd && (
         <AddStaffModal
           shopId={shopId}
-          candidateUsers={candidateUsers}
+          rolesList={rolesList}
           onClose={() => setShowAdd(false)}
           onDone={() => { setShowAdd(false); router.refresh(); }}
         />
@@ -854,6 +1049,7 @@ export default function StaffView({
       {editMember && (
         <EditStaffModal
           staff={editMember}
+          rolesList={rolesList}
           onClose={() => setEditMember(null)}
           onDone={() => { setEditMember(null); router.refresh(); }}
         />

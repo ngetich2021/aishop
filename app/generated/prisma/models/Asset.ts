@@ -472,7 +472,6 @@ export type AssetCreateOrConnectWithoutShopInput = {
 
 export type AssetCreateManyShopInputEnvelope = {
   data: Prisma.AssetCreateManyShopInput | Prisma.AssetCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type AssetUpsertWithWhereUniqueWithoutShopInput = {
@@ -1274,7 +1273,6 @@ export type AssetCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * The data used to create many Assets.
    */
   data: Prisma.AssetCreateManyInput | Prisma.AssetCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1293,7 +1291,6 @@ export type AssetCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extension
    * The data used to create many Assets.
    */
   data: Prisma.AssetCreateManyInput | Prisma.AssetCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

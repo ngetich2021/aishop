@@ -588,7 +588,6 @@ export type AdvanceCreateOrConnectWithoutShopInput = {
 
 export type AdvanceCreateManyShopInputEnvelope = {
   data: Prisma.AdvanceCreateManyShopInput | Prisma.AdvanceCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type AdvanceUpsertWithWhereUniqueWithoutShopInput = {
@@ -654,7 +653,6 @@ export type AdvanceCreateOrConnectWithoutStaffInput = {
 
 export type AdvanceCreateManyStaffInputEnvelope = {
   data: Prisma.AdvanceCreateManyStaffInput | Prisma.AdvanceCreateManyStaffInput[]
-  skipDuplicates?: boolean
 }
 
 export type AdvanceUpsertWithWhereUniqueWithoutStaffInput = {
@@ -1529,7 +1527,6 @@ export type AdvanceCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * The data used to create many Advances.
    */
   data: Prisma.AdvanceCreateManyInput | Prisma.AdvanceCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1548,7 +1545,6 @@ export type AdvanceCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    * The data used to create many Advances.
    */
   data: Prisma.AdvanceCreateManyInput | Prisma.AdvanceCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

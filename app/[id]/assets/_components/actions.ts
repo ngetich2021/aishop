@@ -1,8 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -10,11 +10,11 @@ export async function createAssetAction(
   shopId: string,
   data: { itemName: string; cost: number; imageUrl?: string }
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const guard = await planGuardCreate(shopId, "assets");
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -44,11 +44,14 @@ export async function updateAssetAction(
   id: string,
   data: { itemName: string; cost: number; imageUrl?: string }
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const asset = await prisma.asset.findUnique({ where: { id }, select: { shopId: true } });
+  if (!asset) return { success: false, error: "Asset not found." };
+
+  const guard = await planGuardMutate(asset.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -56,7 +59,6 @@ export async function updateAssetAction(
     return { success: false, error: "Only managers can edit assets." };
 
   try {
-    const asset = await prisma.asset.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.asset.update({
       where: { id },
       data: {
@@ -65,7 +67,7 @@ export async function updateAssetAction(
         imageUrl: data.imageUrl?.trim() || null,
       },
     });
-    if (asset?.shopId) revalidatePath(`/${asset.shopId}/assets`, "page");
+    revalidatePath(`/${asset.shopId}/assets`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Update failed." };
@@ -73,11 +75,14 @@ export async function updateAssetAction(
 }
 
 export async function deleteAssetAction(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const asset = await prisma.asset.findUnique({ where: { id }, select: { shopId: true } });
+  if (!asset) return { success: false, error: "Asset not found." };
+
+  const guard = await planGuardMutate(asset.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -85,9 +90,8 @@ export async function deleteAssetAction(id: string): Promise<ActionResult> {
     return { success: false, error: "Only admins can delete assets." };
 
   try {
-    const asset = await prisma.asset.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.asset.delete({ where: { id } });
-    if (asset?.shopId) revalidatePath(`/${asset.shopId}/assets`, "page");
+    revalidatePath(`/${asset.shopId}/assets`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

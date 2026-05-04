@@ -44,7 +44,7 @@ export default async function StaffPage({ params }: Props) {
   });
 
   // ── Parallel data fetch ───────────────────────────────────────────────────
-  const [staffList, rolesList, advances, salaries, candidateUsers, myAdvances] = await Promise.all([
+  const [staffList, rolesList, advances, salaries, pendingInvites, myAdvances] = await Promise.all([
     // Staff in this shop with their user profile
     prisma.staff.findMany({
       where:   { shopId },
@@ -63,8 +63,8 @@ export default async function StaffPage({ params }: Props) {
       orderBy: { fullName: "asc" },
     }),
 
-    // All designation templates (Role records)
-    prisma.role.findMany({ orderBy: { name: "asc" } }),
+    // Designation templates scoped to this shop
+    prisma.role.findMany({ where: { shopId }, orderBy: { name: "asc" } }),
 
     // Advance totals per staff member
     prisma.advance.groupBy({
@@ -80,11 +80,11 @@ export default async function StaffPage({ params }: Props) {
       _count: { id: true },
     }),
 
-    // Users who can be added as staff (no existing Staff record)
-    prisma.user.findMany({
-      where:   { staff: null },
-      select:  { id: true, name: true, email: true, image: true },
-      orderBy: { name: "asc" },
+    // Pending invites for this shop (not yet accepted, not expired)
+    prisma.shopInvite.findMany({
+      where:   { shopId, accepted: false, expiresAt: { gt: new Date() } },
+      select:  { id: true, email: true, role: true, fullName: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: "desc" },
     }),
 
     // Current user's own advance history (for self-service panel)
@@ -118,7 +118,7 @@ export default async function StaffPage({ params }: Props) {
     email:         s.user.email ?? null,
     image:         s.user.image ?? null,
     designation:   s.user.profile?.designation   ?? null,
-    allowedRoutes: s.user.profile?.allowedRoutes ?? [],
+    allowedRoutes: (s.user.profile?.allowedRoutes ?? []) as string[],
     profileRole:   s.user.profile?.role          ?? "staff",
     totalAdvances: advanceMap[s.id] ?? 0,
     paidSalaries:  salaryMap[s.id]  ?? 0,
@@ -139,13 +139,15 @@ export default async function StaffPage({ params }: Props) {
         id:            r.id,
         name:          r.name,
         description:   r.description,
-        allowedRoutes: r.allowedRoutes,
+        allowedRoutes: r.allowedRoutes as string[],
       }))}
-      candidateUsers={candidateUsers.map(u => ({
-        id:    u.id,
-        name:  u.name  ?? null,
-        email: u.email ?? null,
-        image: u.image ?? null,
+      pendingInvites={pendingInvites.map(inv => ({
+        id:        inv.id,
+        email:     inv.email,
+        role:      inv.role,
+        fullName:  inv.fullName ?? null,
+        createdAt: inv.createdAt.toISOString().split("T")[0],
+        expiresAt: inv.expiresAt.toISOString().split("T")[0],
       }))}
       stats={{
         total:          fmtStaff.length,

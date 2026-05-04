@@ -18,7 +18,7 @@ import { FcSalesPerformance } from "react-icons/fc";
 import { FaPersonThroughWindow } from "react-icons/fa6";
 import { GiBuyCard } from "react-icons/gi";
 import { TbReportAnalytics } from "react-icons/tb";
-import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins } from "lucide-react";
+import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins, CreditCard } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const W_OPEN   = 248 as const;
@@ -87,7 +87,7 @@ function ProfileDropdown({
         <div className="flex items-center gap-3">
           <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-indigo-100">
             {image ? (
-              <Image src={image} alt="Avatar" fill className="object-cover" />
+              <Image src={image} alt="Avatar" fill sizes="44px" className="object-cover" />
             ) : (
               <span className="flex h-full items-center justify-center text-indigo-700 font-bold text-sm">
                 {initials(name)}
@@ -117,6 +117,13 @@ function ProfileDropdown({
             Request Advance
           </Link>
         )}
+        <Link
+          href="/billing"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-700 hover:bg-yellow-50 transition-colors font-medium"
+        >
+          <CreditCard size={17} />
+          Billing &amp; Plans
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
@@ -249,7 +256,7 @@ function SidebarUser({
         <div className="flex justify-center py-3">
           <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-50 shrink-0">
             {image ? (
-              <Image src={image} alt="Avatar" fill className="object-cover" />
+              <Image src={image} alt="Avatar" fill sizes="36px" className="object-cover" />
             ) : (
               <span className="flex h-full items-center justify-center text-indigo-700 font-bold text-xs">
                 {initials(name)}
@@ -266,7 +273,7 @@ function SidebarUser({
       <div className="bg-indigo-50 rounded-2xl px-3 py-3 flex items-center gap-3">
         <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-white">
           {image ? (
-            <Image src={image} alt="Avatar" fill className="object-cover" />
+            <Image src={image} alt="Avatar" fill sizes="40px" className="object-cover" />
           ) : (
             <span className="flex h-full items-center justify-center text-indigo-700 font-bold text-sm">
               {initials(name)}
@@ -383,8 +390,8 @@ export default function Navbar() {
     <>
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm"
-        style={{ height: H_TOP }}
+        className="fixed left-0 right-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm"
+        style={{ height: H_TOP, top: "var(--banner-h, 0px)" }}
       >
         {/* Left */}
         <div className="flex items-center gap-2.5">
@@ -403,6 +410,7 @@ export default function Navbar() {
               src="/branton_logo.png"
               alt="Kwenik"
               fill
+              sizes="32px"
               className="object-cover rounded-full border border-indigo-200"
             />
           </div>
@@ -447,7 +455,7 @@ export default function Navbar() {
                 className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transition-colors shrink-0"
               >
                 {user?.image ? (
-                  <Image src={user.image} alt="Avatar" fill className="object-cover" />
+                  <Image src={user.image} alt="Avatar" fill sizes="32px" className="object-cover" />
                 ) : (
                   <span className="flex h-full items-center justify-center bg-indigo-100 text-indigo-700 font-bold text-xs">
                     {initials(user?.name)}
@@ -472,7 +480,7 @@ export default function Navbar() {
       {/* ── DESKTOP SIDEBAR ──────────────────────────────────────────────── */}
       <aside
         className="hidden md:flex flex-col fixed z-40 bg-white border-r border-gray-200 transition-[width] duration-200 overflow-hidden"
-        style={{ top: H_TOP, bottom: 0, width: collapsed ? W_MINI : W_OPEN }}
+        style={{ top: `calc(${H_TOP}px + var(--banner-h, 0px))`, bottom: 0, width: collapsed ? W_MINI : W_OPEN }}
       >
         {/* User card */}
         {session && (
@@ -564,7 +572,7 @@ export default function Navbar() {
             >
               <div className="flex items-center gap-2.5">
                 <div className="relative h-8 w-8">
-                  <Image src="/branton_logo.png" alt="Logo" fill className="object-cover rounded-full border border-indigo-200" />
+                  <Image src="/branton_logo.png" alt="Logo" fill sizes="32px" className="object-cover rounded-full border border-indigo-200" />
                 </div>
                 <span className="text-sm font-extrabold text-indigo-700">Kwenik</span>
               </div>
@@ -579,7 +587,7 @@ export default function Navbar() {
                 <div className="bg-indigo-50 rounded-2xl px-3 py-3 flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-white">
                     {user?.image ? (
-                      <Image src={user.image} alt="Avatar" fill className="object-cover" />
+                      <Image src={user.image} alt="Avatar" fill sizes="40px" className="object-cover" />
                     ) : (
                       <span className="flex h-full items-center justify-center text-indigo-700 font-bold text-sm">
                         {initials(user?.name)}

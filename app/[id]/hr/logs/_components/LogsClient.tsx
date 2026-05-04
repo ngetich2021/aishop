@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface LogUser {
@@ -10,7 +10,7 @@ interface LoginLog {
   id: string; userId: string; loginTime: string; lastSeen: string; duration: number; user: LogUser;
 }
 interface ActivityLog {
-  id: string; userId: string; action: string; path: string; method: string; createdAt: string; user: LogUser;
+  id: string; userId: string; action: string; entity: string | null; entityId: string | null; path: string; method: string; createdAt: string; user: LogUser;
 }
 interface Stats { totalSessions: number; longSessions: number; avgDuration: number; }
 interface Props {
@@ -18,6 +18,7 @@ interface Props {
   stats: Stats;
   logs: LoginLog[];
   activityLogs: ActivityLog[];
+  capped?: boolean;
 }
 
 type Tier = "flash" | "short" | "medium" | "long";
@@ -85,7 +86,7 @@ function Avatar({ user }: { user: LogUser }) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function LogsClient({ activeShop, stats, logs, activityLogs }: Props) {
+export default function LogsClient({ activeShop, stats, logs, activityLogs, capped }: Props) {
   const [tab, setTab]               = useState<Tab>("login");
   const [loginFilter, setLoginFilter] = useState<LoginFilter>("all");
   const [loginSearch, setLoginSearch] = useState("");
@@ -126,6 +127,13 @@ export default function LogsClient({ activeShop, stats, logs, activityLogs }: Pr
           {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
+
+      {/* Cap notice */}
+      {capped && (
+        <div className="mb-4 px-4 py-2.5 bg-zinc-100 border border-zinc-200 rounded-lg text-[11px] font-mono text-zinc-500 tracking-wide">
+          Showing the latest 300 records per table. Older entries are not displayed.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">

@@ -4,10 +4,10 @@ import { auth }           from "@/auth";
 import prisma             from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z }              from "zod";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
-// ── Permission helper ─────────────────────────────────────────────────────────
 async function canManage(shopId: string) {
   const session = await auth();
   if (!session?.user?.id) return null;
@@ -17,7 +17,7 @@ async function canManage(shopId: string) {
     where:  { userId },
     select: { role: true, shopId: true, fullName: true },
   });
-  const role    = (profile?.role ?? "user").toLowerCase().trim();
+  const role      = (profile?.role ?? "user").toLowerCase().trim();
   const isAdmin   = role === "admin" || role === "owner";
   const isManager = role === "manager" || isAdmin;
   if (!isManager) return null;
@@ -31,7 +31,6 @@ async function canManage(shopId: string) {
   return { userId, isAdmin, name: profile?.fullName ?? session.user.name ?? "Unknown" };
 }
 
-// ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
   description: z.string().min(1, "Description is required"),
   amount:      z.coerce.number().min(1, "Amount must be greater than 0"),
@@ -39,13 +38,17 @@ const schema = z.object({
   shopId:      z.string().min(1),
 });
 
-// ── SAVE (create or update) ───────────────────────────────────────────────────
 export async function saveExpenseAction(
   _: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
   const shopId    = formData.get("shopId")?.toString() ?? "";
   const expenseId = formData.get("expenseId")?.toString() || null;
+
+  const guard = expenseId
+    ? await planGuardMutate(shopId)
+    : await planGuardCreate(shopId, "expenses");
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const ctx = await canManage(shopId);
   if (!ctx) return { success: false, error: "Permission denied." };
@@ -60,7 +63,6 @@ export async function saveExpenseAction(
 
   const { description, amount, category } = parsed.data;
 
-  // Wallet must exist
   const wallet = await prisma.wallet.findUnique({
     where:  { shopId },
     select: { balance: true },
@@ -70,13 +72,12 @@ export async function saveExpenseAction(
 
   try {
     if (expenseId) {
-      // ── Update: only charge/refund the delta ────────────────────────────────
       const existing = await prisma.expense.findUnique({
         where:  { id: expenseId },
         select: { amount: true },
       });
       const oldAmount = existing?.amount ?? 0;
-      const netDelta  = amount - oldAmount; // positive → more deducted; negative → refund
+      const netDelta  = amount - oldAmount;
 
       if (netDelta > 0 && wallet.balance < netDelta)
         return { success: false, error: `Insufficient wallet balance. Available: KSh ${wallet.balance.toLocaleString()}` };
@@ -91,7 +92,6 @@ export async function saveExpenseAction(
           : []),
       ]);
     } else {
-      // ── Create: must have enough wallet balance ─────────────────────────────
       if (wallet.balance < amount)
         return { success: false, error: `Insufficient wallet balance. Available: KSh ${wallet.balance.toLocaleString()}` };
 
@@ -111,8 +111,10 @@ export async function saveExpenseAction(
   }
 }
 
-// ── DELETE (refunds wallet) ───────────────────────────────────────────────────
 export async function deleteExpenseAction(id: string, shopId: string): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const ctx = await canManage(shopId);
   if (!ctx || !ctx.isAdmin) return { success: false, error: "Only admins can delete expenses." };
 
@@ -125,7 +127,6 @@ export async function deleteExpenseAction(id: string, shopId: string): Promise<A
 
     await prisma.$transaction([
       prisma.expense.delete({ where: { id } }),
-      // Refund the amount back to wallet
       prisma.wallet.update({
         where: { shopId: expense.shopId },
         data:  { balance: { increment: expense.amount } },

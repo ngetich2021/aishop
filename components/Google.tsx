@@ -34,6 +34,7 @@ export default function GoogleSignIn({ authError }: { authError?: string }) {
                 src="/branton_logo.png"
                 alt="Kwenik Logo"
                 fill
+                sizes="96px"
                 className="object-cover"
                 priority
               />

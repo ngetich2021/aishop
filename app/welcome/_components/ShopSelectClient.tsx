@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   Store,
   MapPin,
@@ -16,7 +16,13 @@ import {
   Loader2,
   Search,
   LogOut,
+  AlertTriangle,
+  CreditCard,
+  CheckCircle2,
+  Zap,
+  Crown,
 } from "lucide-react";
+import Link from "next/link";
 import ShopFormModal, { ShopData } from "./ShopFormModal";
 import { deleteShopAction } from "./actions";
 
@@ -28,27 +34,47 @@ interface Shop {
 }
 
 interface Props {
-  shops: Shop[];
-  canManage: boolean;
-  userName: string;
+  shops:        Shop[];
+  canManage:    boolean;
+  userName:     string;
+  plan:         string;
+  planExpiry?:  string;
 }
 
+// ── Plan helpers ──────────────────────────────────────────────────────────────
+
+type PlanStatus = "pro" | "demo_plus" | "expired" | "demo";
+
+function getPlanStatus(plan: string, planExpiry?: string): PlanStatus {
+  if (plan === "pro") return "pro";
+  if (plan === "demo_plus") {
+    if (planExpiry && Date.now() < new Date(planExpiry).getTime()) return "demo_plus";
+    return "expired";
+  }
+  return "demo";
+}
+
+const PLAN_LABEL: Record<PlanStatus, string> = {
+  pro:       "Pro",
+  demo_plus: "Demo+",
+  expired:   "Expired",
+  demo:      "Demo (Free)",
+};
+
+const PLAN_BADGE: Record<PlanStatus, string> = {
+  pro:       "bg-yellow-400 text-yellow-900",
+  demo_plus: "bg-green-400 text-green-900",
+  expired:   "bg-red-400 text-white",
+  demo:      "bg-blue-200 text-blue-900",
+};
+
+// ── Shop context menu ─────────────────────────────────────────────────────────
+
 function ShopMenu({
-  shop,
-  top,
-  left,
-  deletingId,
-  onView,
-  onEdit,
-  onDelete,
+  shop, top, left, deletingId, onView, onEdit, onDelete,
 }: {
-  shop: Shop;
-  top: number;
-  left: number;
-  deletingId: string | null;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  shop: Shop; top: number; left: number; deletingId: string | null;
+  onView: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   return createPortal(
     <div
@@ -56,16 +82,10 @@ function ShopMenu({
       style={{ top, left, zIndex: 20000 }}
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        onClick={onView}
-        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-      >
+      <button onClick={onView} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
         <Eye size={13} className="text-gray-400" /> View details
       </button>
-      <button
-        onClick={onEdit}
-        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-      >
+      <button onClick={onEdit} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
         <Pencil size={13} className="text-blue-400" /> Edit shop
       </button>
       <div className="my-1 border-t border-gray-100" />
@@ -74,11 +94,7 @@ function ShopMenu({
         disabled={deletingId === shop.id}
         className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
       >
-        {deletingId === shop.id ? (
-          <Loader2 size={13} className="animate-spin" />
-        ) : (
-          <Trash2 size={13} />
-        )}
+        {deletingId === shop.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
         Delete shop
       </button>
     </div>,
@@ -86,13 +102,15 @@ function ShopMenu({
   );
 }
 
-export default function ShopSelectClient({ shops, canManage, userName }: Props) {
-  const router = useRouter();
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function ShopSelectClient({ shops, canManage, userName, plan, planExpiry }: Props) {
+  const router      = useRouter();
+  const { update }  = useSession();
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [modalMode, setModalMode]   = useState<"add" | "edit" | "view">("add");
   const [activeShop, setActiveShop] = useState<ShopData | undefined>();
-
   const [search, setSearch]         = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -100,7 +118,10 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
   const [menuLeft, setMenuLeft]     = useState(0);
   const openShopRef                 = useRef<Shop | null>(null);
 
-  // ── Auto-open "Add Shop" modal if owner has no shops yet
+  const planStatus = getPlanStatus(plan, planExpiry);
+  const isActive   = planStatus === "pro" || planStatus === "demo_plus" || planStatus === "demo";
+
+  // Auto-open "Add Shop" modal for owners with no shops yet
   useEffect(() => {
     if (canManage && shops.length === 0) {
       setModalMode("add");
@@ -123,56 +144,42 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
   const toggleMenu = (shop: Shop, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (openMenuId === shop.id) { setOpenMenuId(null); return; }
-
     const rect = e.currentTarget.getBoundingClientRect();
     const dw = 176, dh = 130, gap = 8;
-
     let top  = rect.bottom + gap;
     let left = rect.right - dw;
     if (top + dh > window.innerHeight - gap) top = rect.top - dh - gap;
     if (left < gap) left = gap;
     if (left + dw > window.innerWidth - gap) left = window.innerWidth - dw - gap;
-
-    setMenuTop(top);
-    setMenuLeft(left);
+    setMenuTop(top); setMenuLeft(left);
     openShopRef.current = shop;
     setOpenMenuId(shop.id);
   };
 
   const openModal = (mode: "add" | "edit" | "view", shop?: Shop) => {
-    setModalMode(mode);
-    setActiveShop(shop);
-    setModalOpen(true);
-    setOpenMenuId(null);
+    setModalMode(mode); setActiveShop(shop); setModalOpen(true); setOpenMenuId(null);
   };
 
-  const handleClose = () => {
-    // Prevent closing if owner has no shops — they must create one first
-    if (canManage && shops.length === 0) return;
-    setModalOpen(false);
-  };
+  const handleClose = () => setModalOpen(false);
 
-  const handleSuccess = () => {
+  const handleSuccess = async (shopId?: string) => {
     setModalOpen(false);
-    router.refresh();
+    await update(); // re-read role + plan from DB into JWT
+    // On first shop creation go directly into the shop so the user doesn't
+    // have to click again. On edits, stay on welcome to refresh the list.
+    if (shopId && shops.length === 0) {
+      window.location.href = `/${shopId}/dashboard`;
+    } else {
+      window.location.href = "/welcome";
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this shop? This cannot be undone.")) return;
-    setOpenMenuId(null);
-    setDeletingId(id);
-    try {
-      await deleteShopAction(id);
-      router.refresh();
-    } catch {
-      alert("Failed to delete shop.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const enterShop = (shopId: string) => {
-    router.push(`/${shopId}/dashboard`);
+    setOpenMenuId(null); setDeletingId(id);
+    try { await deleteShopAction(id); router.refresh(); }
+    catch { alert("Failed to delete shop."); }
+    finally { setDeletingId(null); }
   };
 
   const filtered = shops.filter((s) =>
@@ -182,10 +189,33 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // Count suspended shops (all share the same sub, so it's all-or-nothing)
+  const suspendedCount = !isActive ? shops.length : 0;
+
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-        <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 text-white px-6 py-10 shadow-lg">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+
+        {/* ── Suspension alert banner ── */}
+        {canManage && shops.length > 0 && !isActive && (
+          <div className="bg-orange-500 text-white px-4 py-3 flex items-center gap-3 shadow-md">
+            <AlertTriangle size={16} className="shrink-0" />
+            <p className="flex-1 text-xs font-semibold leading-snug">
+              {planStatus === "expired"
+                ? `Your Demo+ subscription has expired — ${suspendedCount} shop${suspendedCount > 1 ? "s are" : " is"} currently suspended for staff.`
+                : `You are on the free Demo plan — ${suspendedCount} shop${suspendedCount > 1 ? "s are" : " is"} view-only and staff cannot access.`}
+            </p>
+            <Link
+              href="/billing"
+              className="shrink-0 flex items-center gap-1.5 bg-white text-orange-600 font-black text-xs px-3 py-1.5 rounded-lg hover:bg-orange-50 transition"
+            >
+              <CreditCard size={12} /> Pay Now
+            </Link>
+          </div>
+        )}
+
+        {/* ── Header ── */}
+        <div className="bg-linear-to-r from-blue-700 via-blue-600 to-indigo-600 text-white px-6 py-10 shadow-lg">
           <div className="max-w-5xl mx-auto flex items-end justify-between gap-4 flex-wrap">
             <div>
               <p className="text-blue-200 text-sm font-medium mb-1">{greeting}</p>
@@ -193,10 +223,19 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
                 Hey, <span className="text-yellow-300">{userName}</span>!
               </h1>
               <p className="mt-1.5 text-blue-100 text-sm">
-                {canManage
-                  ? "Manage your shops or click one to enter."
-                  : "Select the shop you want to work in today."}
+                {canManage ? "Manage your shops or click one to enter." : "Select the shop you want to work in today."}
               </p>
+
+              {/* Plan badge — only show when there are shops */}
+              {shops.length > 0 && (
+                <span className={`mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${PLAN_BADGE[planStatus]}`}>
+                  {planStatus === "pro"       && <Crown   size={11} />}
+                  {planStatus === "demo_plus" && <CheckCircle2 size={11} />}
+                  {planStatus === "expired"   && <AlertTriangle size={11} />}
+                  {planStatus === "demo"      && <Zap     size={11} />}
+                  {PLAN_LABEL[planStatus]}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -218,6 +257,7 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
           </div>
         </div>
 
+        {/* ── Body ── */}
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="bg-white border border-gray-200 rounded-xl px-5 py-3.5 shadow-sm">
@@ -229,7 +269,7 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
               </p>
             </div>
 
-            <div className="flex-1 min-w-[200px] relative">
+            <div className="flex-1 min-w-50 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
@@ -263,36 +303,40 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
                   key={shop.id}
                   className="group relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer"
                   style={{ animationDelay: `${i * 0.04}s` }}
-                  onClick={() => enterShop(shop.id)}
+                  onClick={() => router.push(`/${shop.id}/dashboard`)}
                 >
-                  <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+                  {/* Top stripe — green if active, orange if suspended */}
+                  <div className={`h-1 w-full ${isActive ? "bg-linear-to-r from-blue-500 to-indigo-500" : "bg-linear-to-r from-orange-400 to-red-400"}`} />
 
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-11 w-11 shrink-0 rounded-xl bg-blue-100 flex items-center justify-center shadow-sm">
-                          <Store size={20} className="text-blue-600" />
+                        <div className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${isActive ? "bg-blue-100" : "bg-orange-100"}`}>
+                          <Store size={20} className={isActive ? "text-blue-600" : "text-orange-500"} />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-gray-900 truncate leading-tight">
-                            {shop.name}
-                          </p>
+                          <p className="font-bold text-gray-900 truncate leading-tight">{shop.name}</p>
                           <p className="text-[0.7rem] text-gray-400 font-medium mt-0.5">
                             Shop #{shop.id.slice(-4).toUpperCase()}
                           </p>
                         </div>
                       </div>
 
-                      {canManage && (
-                        <button
-                          onClick={(e) => toggleMenu(shop, e)}
-                          className={`shrink-0 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition ${
-                            openMenuId === shop.id ? "bg-gray-100 text-gray-600" : ""
-                          }`}
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!isActive && (
+                          <span className="text-[0.65rem] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                            {planStatus === "expired" ? "Expired" : "Unpaid"}
+                          </span>
+                        )}
+                        {canManage && (
+                          <button
+                            onClick={(e) => toggleMenu(shop, e)}
+                            className={`p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition ${openMenuId === shop.id ? "bg-gray-100 text-gray-600" : ""}`}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -308,24 +352,26 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
 
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-blue-600 group-hover:text-blue-700 transition">
-                          Click to enter →
-                        </span>
-                        <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                          <svg
-                            className="w-3.5 h-3.5 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2.5}
-                            viewBox="0 0 24 24"
+                        {isActive ? (
+                          <span className="text-xs font-semibold text-blue-600 group-hover:text-blue-700 transition">
+                            Click to enter →
+                          </span>
+                        ) : (
+                          <Link
+                            href="/billing"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs font-semibold text-orange-500 hover:text-orange-700 transition flex items-center gap-1"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-                            />
-                          </svg>
-                        </div>
+                            <CreditCard size={11} /> Upgrade to unlock
+                          </Link>
+                        )}
+                        {isActive && (
+                          <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -349,55 +395,28 @@ export default function ShopSelectClient({ shops, canManage, userName }: Props) 
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[10000] flex justify-end">
-          {/* Backdrop — blocked when owner has no shops */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={handleClose}
-          />
-          <div className="relative w-full md:w-[440px] bg-white h-full shadow-2xl flex flex-col rounded-l-3xl overflow-hidden">
+        <div className="fixed inset-0 z-10000 flex justify-end">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+          <div className="relative w-full md:w-110 bg-white h-full shadow-2xl flex flex-col rounded-l-3xl overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  {modalMode === "add"
-                    ? "Add New Shop"
-                    : modalMode === "edit"
-                    ? "Edit Shop"
-                    : "Shop Details"}
+                  {modalMode === "add" ? "Add New Shop" : modalMode === "edit" ? "Edit Shop" : "Shop Details"}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {modalMode === "add"
-                    ? "Fill in the details to create a new shop."
-                    : modalMode === "edit"
-                    ? "Update the shop information below."
+                  {modalMode === "add" ? "Fill in the details to create a new shop."
+                    : modalMode === "edit" ? "Update the shop information below."
                     : "Read-only view of this shop."}
                 </p>
               </div>
-              {/* Hide X button when owner has no shops */}
-              {!(canManage && shops.length === 0) && (
-                <button
-                  onClick={handleClose}
-                  className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+              <button onClick={handleClose} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <ShopFormModal
-                mode={modalMode}
-                shop={activeShop}
-                onSuccess={handleSuccess}
-                onClose={handleClose}
-              />
+              <ShopFormModal mode={modalMode} shop={activeShop} onSuccess={handleSuccess} onClose={handleClose} />
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, logActivity, capturePayment } from "@/lib/actions";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string; saleId?: string };
 
@@ -24,9 +25,12 @@ export async function createSaleAction(
     payments: PaymentLine[];
     customerName?:  string;
     customerPhone?: string;
-    creditDueDate?: string; // ISO date string — required when any payment method is "credit"
+    creditDueDate?: string;
   },
 ): Promise<ActionResult> {
+  const guard = await planGuardCreate(shopId, "sales");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId);
   if (!actor) return { success: false, error: "Unauthorized." };
 
@@ -52,7 +56,6 @@ export async function createSaleAction(
 
   try {
     const saleId = await prisma.$transaction(async (tx) => {
-      // 1. Verify stock
       for (const item of data.items) {
         const product = await tx.product.findUnique({
           where:  { id: item.productId },
@@ -63,7 +66,6 @@ export async function createSaleAction(
           throw new Error(`Insufficient stock for "${product.productName}".`);
       }
 
-      // 2. Create the sale
       const primaryMethod = data.payments[0].method;
       const sale = await tx.sale.create({
         data: {
@@ -86,7 +88,6 @@ export async function createSaleAction(
         },
       });
 
-      // 3. Deduct stock
       for (const item of data.items) {
         await tx.product.update({
           where: { id: item.productId },
@@ -94,7 +95,6 @@ export async function createSaleAction(
         });
       }
 
-      // 4. Capture only NON-credit payments into the Payments ledger
       for (const pmt of cashPmts) {
         if (pmt.amount > 0) {
           await capturePayment(tx, {
@@ -107,7 +107,6 @@ export async function createSaleAction(
         }
       }
 
-      // 5. If any credit portion, create a Credit record
       if (creditAmt > 0) {
         await tx.credit.create({
           data: {
@@ -148,6 +147,9 @@ export async function cancelSaleAction(
   reason: string,
   shopId: string,
 ): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId, { requireManager: true });
   if (!actor) return { success: false, error: "Managers only." };
 

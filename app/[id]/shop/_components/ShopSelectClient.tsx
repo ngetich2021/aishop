@@ -14,8 +14,9 @@ import {
   Eye,
   Loader2,
   Search,
+  Crown,
+  Lock,
 } from "lucide-react";
-import Modal from "@/components/ui/Modal";
 import ShopFormModal, { ShopData } from "./ShopFormModal";
 import { deleteShopAction } from "./actions";
 
@@ -31,6 +32,7 @@ interface Props {
   isOwner: boolean;
   userName: string;
   userId: string;
+  plan: string;
 }
 
 function ShopMenu({
@@ -86,8 +88,9 @@ function ShopMenu({
   );
 }
 
-export default function ShopSelectClient({ shops, isOwner, userName, userId }: Props) {
+export default function ShopSelectClient({ shops, isOwner, userName, plan }: Props) {
   const router = useRouter();
+  const atShopLimit = isOwner && (plan === "demo" || plan === "demo_plus") && shops.length >= 1;
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [modalMode, setModalMode]   = useState<"add" | "edit" | "view">("add");
@@ -100,7 +103,7 @@ export default function ShopSelectClient({ shops, isOwner, userName, userId }: P
   const [menuLeft, setMenuLeft]     = useState(0);
   const openShopRef                 = useRef<Shop | null>(null);
 
-  // ── Auto-open "Add Shop" modal if owner has no shops yet
+  // ── Auto-open "Add Shop" modal for owners with no shops yet (all plans)
   useEffect(() => {
     if (isOwner && shops.length === 0) {
       setModalMode("add");
@@ -147,7 +150,7 @@ export default function ShopSelectClient({ shops, isOwner, userName, userId }: P
   };
 
   const handleClose = () => {
-    // Prevent closing if owner has no shops — they must create one first
+    // Prevent closing when owner has no shops yet — must create one first
     if (isOwner && shops.length === 0) return;
     setModalOpen(false);
   };
@@ -197,20 +200,52 @@ export default function ShopSelectClient({ shops, isOwner, userName, userId }: P
                   ? "Manage your shops or click one to enter."
                   : "Select the shop you want to work in today."}
               </p>
+              <span
+                className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  plan === "pro"
+                    ? "bg-yellow-400 text-yellow-900"
+                    : plan === "demo_plus"
+                    ? "bg-green-400 text-green-900"
+                    : "bg-blue-300 text-blue-900"
+                }`}
+              >
+                {plan === "pro" ? "Pro" : plan === "demo_plus" ? "Demo+" : "Demo"}
+              </span>
             </div>
 
             {isOwner && (
-              <button
-                onClick={() => openModal("add")}
-                className="flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition"
-              >
-                <Plus size={16} /> Add Shop
-              </button>
+              atShopLimit ? (
+                <a
+                  href="/billing"
+                  className="flex items-center gap-2 bg-yellow-400 text-yellow-900 hover:bg-yellow-300 font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition"
+                >
+                  <Crown size={16} /> Upgrade to Pro
+                </a>
+              ) : (
+                <button
+                  onClick={() => openModal("add")}
+                  className="flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition"
+                >
+                  <Plus size={16} /> Add Shop
+                </button>
+              )
             )}
           </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+          {/* Demo shop-limit banner */}
+          {atShopLimit && (
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-5 py-3.5 text-amber-900">
+              <Lock size={16} className="shrink-0 text-amber-600" />
+              <p className="text-sm flex-1">
+                <strong>Demo plan — 1 shop limit.</strong> You&apos;re using your free shop.{" "}
+                <a href="/billing" className="font-bold underline hover:text-amber-700">Upgrade to Pro</a>
+                {" "}for multiple shops (KES 5 creation + KES 30/day each).
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center gap-4 flex-wrap">
             <div className="bg-white border border-gray-200 rounded-xl px-5 py-3.5 shadow-sm">
               <p className="text-[0.65rem] uppercase tracking-widest text-gray-400 font-semibold">
@@ -239,7 +274,7 @@ export default function ShopSelectClient({ shops, isOwner, userName, userId }: P
               <p className="text-sm font-semibold text-gray-400">
                 {search ? "No shops match your search." : "No shops found."}
               </p>
-              {isOwner && !search && (
+              {isOwner && !search && !atShopLimit && (
                 <button
                   onClick={() => openModal("add")}
                   className="mt-2 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow"
@@ -365,7 +400,6 @@ export default function ShopSelectClient({ shops, isOwner, userName, userId }: P
                     : "Read-only view of this shop."}
                 </p>
               </div>
-              {/* Hide X button when owner has no shops */}
               {!(isOwner && shops.length === 0) && (
                 <button
                   onClick={handleClose}

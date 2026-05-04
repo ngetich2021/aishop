@@ -540,7 +540,6 @@ export type SalaryCreateOrConnectWithoutShopInput = {
 
 export type SalaryCreateManyShopInputEnvelope = {
   data: Prisma.SalaryCreateManyShopInput | Prisma.SalaryCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type SalaryUpsertWithWhereUniqueWithoutShopInput = {
@@ -600,7 +599,6 @@ export type SalaryCreateOrConnectWithoutStaffInput = {
 
 export type SalaryCreateManyStaffInputEnvelope = {
   data: Prisma.SalaryCreateManyStaffInput | Prisma.SalaryCreateManyStaffInput[]
-  skipDuplicates?: boolean
 }
 
 export type SalaryUpsertWithWhereUniqueWithoutStaffInput = {
@@ -1447,7 +1445,6 @@ export type SalaryCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many Salaries.
    */
   data: Prisma.SalaryCreateManyInput | Prisma.SalaryCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1466,7 +1463,6 @@ export type SalaryCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * The data used to create many Salaries.
    */
   data: Prisma.SalaryCreateManyInput | Prisma.SalaryCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

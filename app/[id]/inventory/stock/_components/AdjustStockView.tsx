@@ -14,6 +14,7 @@ import {
 import { deleteAdjustmentAction } from "./actions";
 import { deleteReturnAction, updateReturnStatusAction } from "./returnactions";
 import AdjustmentFormSideSheet from "./AdjustmentFormSideSheet";
+import { usePlan } from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ export default function AdjustStockView({
   shopId, activeShop, isOwner, stats, adjustments, returns, products, sales, profile,
 }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
   const [isPending, startTransition] = useTransition();
 
   const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
@@ -350,7 +352,9 @@ export default function AdjustStockView({
 
           <button
             onClick={openAdd}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm transition shrink-0"
+            disabled={isDemo}
+            title={isDemo ? "Upgrade your plan to add adjustments" : undefined}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={14} />
             {tab === "adjustments" ? "Add Adjustment" : "New Return"}

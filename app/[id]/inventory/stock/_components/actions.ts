@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -23,7 +24,6 @@ async function getCtx() {
   });
   const role        = (profile?.role ?? "owner").toLowerCase().trim();
   const isOwner     = role === "owner";
-  // fullName in profile may be null for OAuth users — fall back to OAuth display name
   const displayName = profile?.fullName?.trim() || session.user.name?.trim() || "Unknown";
   return { userId: session.user.id, isOwner, profile, displayName };
 }
@@ -32,16 +32,18 @@ export async function saveAdjustmentAction(
   _: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const ctx = await getCtx();
+  const formShopId = formData.get("shopId")?.toString() ?? "";
+  const ctx        = await getCtx();
   if (!ctx) return { success: false, error: "Unauthorized" };
   const { userId, isOwner, profile, displayName } = ctx;
-
-  const formShopId = formData.get("shopId")?.toString() ?? "";
 
   // Staff: always use their assigned shop; owner: use form shopId
   const resolvedShopId = isOwner ? formShopId : (profile?.shopId ?? "");
   if (!resolvedShopId)
     return { success: false, error: "No shop assigned. Contact your administrator." };
+
+  const guard = await planGuardCreate(resolvedShopId, "adjustments");
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const adjustedBy = displayName;
 
@@ -63,7 +65,6 @@ export async function saveAdjustmentAction(
     if (product.shopId !== v.shopId)
       return { success: false, error: "Product does not belong to the selected shop" };
 
-    // Verify shop access
     if (isOwner) {
       const owned = await prisma.shop.findUnique({ where: { id: v.shopId }, select: { userId: true } });
       if (!owned || owned.userId !== userId)
@@ -109,11 +110,13 @@ export async function saveAdjustmentAction(
 }
 
 export async function deleteAdjustmentAction(id: string, shopId: string): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const ctx = await getCtx();
   if (!ctx) return { success: false, error: "Unauthorized" };
   const { userId, isOwner } = ctx;
 
-  // Only owners can delete adjustments
   if (!isOwner) return { success: false, error: "Only owners can delete adjustments" };
 
   try {

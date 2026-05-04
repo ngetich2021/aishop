@@ -564,7 +564,6 @@ export type CreditPaymentCreateOrConnectWithoutShopInput = {
 
 export type CreditPaymentCreateManyShopInputEnvelope = {
   data: Prisma.CreditPaymentCreateManyShopInput | Prisma.CreditPaymentCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type CreditPaymentUpsertWithWhereUniqueWithoutShopInput = {
@@ -627,7 +626,6 @@ export type CreditPaymentCreateOrConnectWithoutCreditInput = {
 
 export type CreditPaymentCreateManyCreditInputEnvelope = {
   data: Prisma.CreditPaymentCreateManyCreditInput | Prisma.CreditPaymentCreateManyCreditInput[]
-  skipDuplicates?: boolean
 }
 
 export type CreditPaymentUpsertWithWhereUniqueWithoutCreditInput = {
@@ -1488,7 +1486,6 @@ export type CreditPaymentCreateManyArgs<ExtArgs extends runtime.Types.Extensions
    * The data used to create many CreditPayments.
    */
   data: Prisma.CreditPaymentCreateManyInput | Prisma.CreditPaymentCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1507,7 +1504,6 @@ export type CreditPaymentCreateManyAndReturnArgs<ExtArgs extends runtime.Types.E
    * The data used to create many CreditPayments.
    */
   data: Prisma.CreditPaymentCreateManyInput | Prisma.CreditPaymentCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

@@ -578,7 +578,6 @@ export type CreditCreateOrConnectWithoutShopInput = {
 
 export type CreditCreateManyShopInputEnvelope = {
   data: Prisma.CreditCreateManyShopInput | Prisma.CreditCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type CreditUpsertWithWhereUniqueWithoutShopInput = {
@@ -1518,7 +1517,6 @@ export type CreditCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many Credits.
    */
   data: Prisma.CreditCreateManyInput | Prisma.CreditCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1537,7 +1535,6 @@ export type CreditCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * The data used to create many Credits.
    */
   data: Prisma.CreditCreateManyInput | Prisma.CreditCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

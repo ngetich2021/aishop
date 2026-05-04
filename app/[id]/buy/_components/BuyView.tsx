@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { createBuyAction, updateBuyStatusAction, deleteBuyAction, type BuyItem } from "./actions";
 import { createSupplierAction } from "@/app/[id]/suppliers/_components/actions";
+import { usePlan } from "@/components/PlanProvider";
 
 type Buy = {
   id: string; supplierId: string; supplierName: string;
@@ -249,6 +250,7 @@ function BuyModal({ shopId, suppliers: initialSuppliers, onClose }: {
 // ── Main view ─────────────────────────────────────────────────────────────────
 export default function BuyView({ activeShop, isAdmin, buys, suppliers, stats }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
   const [search, setSearch]         = useState("");
   const [filterStatus, setStatus]   = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -311,7 +313,9 @@ export default function BuyView({ activeShop, isAdmin, buys, suppliers, stats }:
               <p className="text-xs text-gray-400 mt-0.5">{activeShop.name} · {activeShop.location}</p>
             </div>
             <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition">
+              disabled={isDemo}
+              title={isDemo ? "Upgrade your plan to create purchase orders" : undefined}
+              className="flex items-center gap-1.5 bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
               <Plus size={14} /> New Order
             </button>
           </div>

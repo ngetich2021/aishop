@@ -11,7 +11,7 @@ export const SignInButton = () => (
     type="button"
   >
     <div className="relative w-9 h-9">
-      <Image src="/google1.png" alt="Google" fill className="object-contain" />
+      <Image src="/google1.png" alt="Google" fill sizes="36px" className="object-contain" />
     </div>
     <span className="flex gap-2 text-xl font-bold text-blu items-center">LOGIN<MdArrowForwardIos className="text-green-400" /></span>
   </button>

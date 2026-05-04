@@ -1,8 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -12,11 +12,10 @@ function invalidate(shopId: string) {
   revalidatePath(`/${shopId}/dashboard`);
 }
 
-/**
- * Auto-generate salary records for all staff in the shop for the current month.
- * Idempotent — skips staff that already have a record for this month.
- */
 export async function autoGenerateSalariesAction(shopId: string): Promise<ActionResult> {
+  const guard = await planGuardCreate(shopId, "salaries");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   try {
     const now      = new Date();
     const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -52,11 +51,14 @@ export async function autoGenerateSalariesAction(shopId: string): Promise<Action
 }
 
 export async function updateSalaryStatusAction(id: string, status: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const salary = await prisma.salary.findUnique({ where: { id }, select: { shopId: true } });
+  if (!salary) return { success: false, error: "Salary not found." };
+
+  const guard = await planGuardMutate(salary.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -64,9 +66,8 @@ export async function updateSalaryStatusAction(id: string, status: string): Prom
     return { success: false, error: "Only managers can update salary status." };
 
   try {
-    const salary = await prisma.salary.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.salary.update({ where: { id }, data: { status } });
-    if (salary?.shopId) invalidate(salary.shopId);
+    invalidate(salary.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Update failed" };
@@ -74,11 +75,14 @@ export async function updateSalaryStatusAction(id: string, status: string): Prom
 }
 
 export async function deleteSalaryAction(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const salary = await prisma.salary.findUnique({ where: { id }, select: { shopId: true } });
+  if (!salary) return { success: false, error: "Salary not found." };
+
+  const guard = await planGuardMutate(salary.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -86,9 +90,8 @@ export async function deleteSalaryAction(id: string): Promise<ActionResult> {
     return { success: false, error: "Only managers can delete salary records." };
 
   try {
-    const salary = await prisma.salary.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.salary.delete({ where: { id } });
-    if (salary?.shopId) revalidatePath(`/${salary.shopId}/hr/salary`, "page");
+    revalidatePath(`/${salary.shopId}/hr/salary`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed" };

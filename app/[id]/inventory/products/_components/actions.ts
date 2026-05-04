@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { v2 as cloudinary } from "cloudinary";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string; newId?: string };
 
@@ -12,8 +13,6 @@ cloudinary.config({
   api_key:    process.env.CLOUDINARY_API_KEY!,
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
-
-// ── helpers ───────────────────────────────────────────────────────────────────
 
 async function getSessionAndRole() {
   const session = await auth();
@@ -33,10 +32,10 @@ async function uploadImage(file: File): Promise<string> {
     cloudinary.uploader
       .upload_stream(
         {
-          folder:         "inventory/products",
-          resource_type:  "image",
+          folder:          "inventory/products",
+          resource_type:   "image",
           allowed_formats: ["jpg", "png", "jpeg", "webp"],
-          transformation: [{ width: 800, height: 800, crop: "limit" }],
+          transformation:  [{ width: 800, height: 800, crop: "limit" }],
         },
         (err, result) => {
           if (err || !result) reject(err ?? new Error("Upload failed"));
@@ -57,12 +56,27 @@ export async function saveProductAction(
   _: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  const productId  = formData.get("productId")?.toString() ?? null;
+  const formShopId = formData.get("shopId")?.toString() ?? null;
+
+  // For edits, shopId may not be in formData — fetch from DB
+  let guardShopId = formShopId;
+  if (productId && !guardShopId) {
+    const p = await prisma.product.findUnique({ where: { id: productId }, select: { shopId: true } });
+    guardShopId = p?.shopId ?? null;
+  }
+  if (!guardShopId) return { success: false, error: "Shop not specified" };
+
+  const guard = productId
+    ? await planGuardMutate(guardShopId)
+    : await planGuardCreate(guardShopId, "products");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const ctx = await getSessionAndRole();
   if (!ctx) return { success: false, error: "Unauthorized" };
   const { userId, isOwner } = ctx;
 
-  const productId    = formData.get("productId")?.toString() ?? null;
-  const shopId       = formData.get("shopId")?.toString() ?? null;
+  const shopId       = guardShopId;
   const productName  = formData.get("productName")?.toString().trim() ?? "";
   const serialNo     = formData.get("serialNo")?.toString().trim() || null;
   const quantity     = Number(formData.get("quantity")  || 0);
@@ -103,15 +117,11 @@ export async function saveProductAction(
           productName, serialNo, outOfStockLimit,
           buyingPrice, sellingPrice, discount, subCategoryId,
           ...(imageUrl ? { imageUrl } : {}),
-          // quantity is intentionally preserved on edit
         },
       });
       revalidateProducts(existing.shopId);
     } else {
       // ── CREATE ────────────────────────────────────────────────────────────
-      if (!shopId) return { success: false, error: "Shop not specified" };
-
-      // Verify ownership of the target shop
       const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { userId: true } });
       if (!shop) return { success: false, error: "Shop not found" };
       if (!isOwner && shop.userId !== userId)
@@ -134,6 +144,9 @@ export async function saveProductAction(
 }
 
 export async function deleteProductAction(id: string, shopId: string): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const ctx = await getSessionAndRole();
   if (!ctx) return { success: false, error: "Unauthorized" };
   const { userId, isOwner } = ctx;
@@ -161,22 +174,27 @@ export async function saveCategoryAction(
   _: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  const shopId = formData.get("shopId")?.toString() ?? "";
+  const id     = formData.get("id")?.toString() ?? null;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const ctx = await getSessionAndRole();
   if (!ctx) return { success: false, error: "Unauthorized" };
   if (!ctx.isOwner) return { success: false, error: "Owners only" };
 
-  const id   = formData.get("id")?.toString() ?? null;
   const name = formData.get("name")?.toString().trim() ?? "";
-  const shopId = formData.get("shopId")?.toString() ?? "";
-
   if (!name) return { success: false, error: "Name required" };
+
+  const userId = ctx.userId;
 
   try {
     let categoryId = id;
     if (id) {
       await prisma.category.update({ where: { id }, data: { name } });
     } else {
-      const created = await prisma.category.create({ data: { name } });
+      const created = await prisma.category.create({ data: { name, userId } });
       categoryId = created.id;
     }
     if (shopId) revalidateProducts(shopId);
@@ -217,12 +235,14 @@ export async function saveSubCategoryAction(
 
   if (!name || !categoryId) return { success: false, error: "Name and category required" };
 
+  const userId = ctx.userId;
+
   try {
     let subId = id;
     if (id) {
       await prisma.subCategory.update({ where: { id }, data: { name, categoryId } });
     } else {
-      const created = await prisma.subCategory.create({ data: { name, categoryId } });
+      const created = await prisma.subCategory.create({ data: { name, categoryId, userId } });
       subId = created.id;
     }
     if (shopId) revalidateProducts(shopId);

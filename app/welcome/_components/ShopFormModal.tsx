@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { Store, Phone, MapPin } from "lucide-react";
 import { saveShopAction } from "./actions";
 
-type ActionState = { success?: boolean; error?: string };
+type ActionState = { success?: boolean; shopId?: string; error?: string };
 type Mode = "add" | "edit" | "view";
 
 export interface ShopData {
@@ -18,7 +18,7 @@ export interface ShopData {
 interface Props {
   mode: Mode;
   shop?: ShopData;
-  onSuccess: () => void;
+  onSuccess: (shopId?: string) => void;
   onClose: () => void;
 }
 
@@ -31,8 +31,8 @@ export default function ShopFormModal({ mode, shop, onSuccess, onClose }: Props)
   );
 
   useEffect(() => {
-    if (state?.success) onSuccess();
-  }, [state?.success, onSuccess]);
+    if (state?.success) onSuccess(state.shopId);
+  }, [state?.success]); // eslint-disable-line
 
   const fieldBase =
     "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition";

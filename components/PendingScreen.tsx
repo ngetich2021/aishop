@@ -10,7 +10,7 @@ export default function PendingScreen() {
         {/* Top banner */}
         <div className="pt-10 pb-8 px-8 bg-gradient-to-b from-blue-600 to-blue-700 flex flex-col items-center gap-4">
           <div className="relative w-24 h-24 rounded-full ring-8 ring-white/20 shadow-2xl overflow-hidden">
-            <Image src="/branton_logo.png" alt="Logo" fill className="object-cover" priority />
+            <Image src="/branton_logo.png" alt="Logo" fill sizes="96px" className="object-cover" priority />
           </div>
           <div className="flex items-center gap-2 bg-amber-400/20 border border-amber-300/40 rounded-full px-4 py-1.5">
             <Clock size={14} className="text-amber-200" />

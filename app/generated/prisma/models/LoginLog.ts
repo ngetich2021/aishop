@@ -472,7 +472,6 @@ export type LoginLogCreateOrConnectWithoutUserInput = {
 
 export type LoginLogCreateManyUserInputEnvelope = {
   data: Prisma.LoginLogCreateManyUserInput | Prisma.LoginLogCreateManyUserInput[]
-  skipDuplicates?: boolean
 }
 
 export type LoginLogUpsertWithWhereUniqueWithoutUserInput = {
@@ -1274,7 +1273,6 @@ export type LoginLogCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * The data used to create many LoginLogs.
    */
   data: Prisma.LoginLogCreateManyInput | Prisma.LoginLogCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1293,7 +1291,6 @@ export type LoginLogCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    * The data used to create many LoginLogs.
    */
   data: Prisma.LoginLogCreateManyInput | Prisma.LoginLogCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

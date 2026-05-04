@@ -630,7 +630,6 @@ export type AdjustmentCreateOrConnectWithoutShopInput = {
 
 export type AdjustmentCreateManyShopInputEnvelope = {
   data: Prisma.AdjustmentCreateManyShopInput | Prisma.AdjustmentCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type AdjustmentUpsertWithWhereUniqueWithoutShopInput = {
@@ -699,7 +698,6 @@ export type AdjustmentCreateOrConnectWithoutProductInput = {
 
 export type AdjustmentCreateManyProductInputEnvelope = {
   data: Prisma.AdjustmentCreateManyProductInput | Prisma.AdjustmentCreateManyProductInput[]
-  skipDuplicates?: boolean
 }
 
 export type AdjustmentUpsertWithWhereUniqueWithoutProductInput = {
@@ -1588,7 +1586,6 @@ export type AdjustmentCreateManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * The data used to create many Adjustments.
    */
   data: Prisma.AdjustmentCreateManyInput | Prisma.AdjustmentCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1607,7 +1604,6 @@ export type AdjustmentCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    * The data used to create many Adjustments.
    */
   data: Prisma.AdjustmentCreateManyInput | Prisma.AdjustmentCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

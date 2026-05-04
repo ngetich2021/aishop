@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, walletDeduct, capturePayment } from "@/lib/actions";
+import { planGuardCreate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -13,11 +14,13 @@ function revalidate(shopId: string) {
   revalidatePath(`/${shopId}/dashboard`,        "page");
 }
 
-// ── DEPOSIT ──────────────────────────────────────────────────────────────────
 export async function depositAction(
   shopId: string,
   data: { description: string; amount: number; source: string },
 ): Promise<ActionResult> {
+  const guard = await planGuardCreate(shopId, "transactions");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId, { requireAdmin: true });
   if (!actor) return { success: false, error: "Only admins can deposit funds." };
   if (!data.description?.trim()) return { success: false, error: "Description is required." };
@@ -49,11 +52,13 @@ export async function depositAction(
   }
 }
 
-// ── WITHDRAW ─────────────────────────────────────────────────────────────────
 export async function withdrawAction(
   shopId: string,
   data: { description: string; amount: number; reason: string },
 ): Promise<ActionResult> {
+  const guard = await planGuardCreate(shopId, "transactions");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId, { requireAdmin: true });
   if (!actor) return { success: false, error: "Only admins can withdraw funds." };
   if (!data.description?.trim()) return { success: false, error: "Description is required." };
@@ -77,12 +82,13 @@ export async function withdrawAction(
   }
 }
 
-// ── TRANSFER FROM PAYMENTS → WALLET ──────────────────────────────────────────
-// Move funds from payments available balance → wallet
 export async function transferFromPaymentsAction(
   shopId: string,
   data: { amount: number; note: string },
 ): Promise<ActionResult> {
+  const guard = await planGuardCreate(shopId, "transactions");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId, { requireAdmin: true });
   if (!actor) return { success: false, error: "Only admins can transfer funds." };
   if (!data.amount || data.amount <= 0) return { success: false, error: "Amount must be > 0." };
@@ -90,7 +96,6 @@ export async function transferFromPaymentsAction(
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Check payments available balance
       const [inAgg, outAgg] = await Promise.all([
         tx.payment.aggregate({ where: { shopId, direction: "in" },  _sum: { amount: true } }),
         tx.payment.aggregate({ where: { shopId, direction: "out" }, _sum: { amount: true } }),
@@ -101,7 +106,6 @@ export async function transferFromPaymentsAction(
           `Insufficient payments balance. Available: KSh ${available.toLocaleString()}.`,
         );
 
-      // Record outflow from payments
       await capturePayment(tx, {
         shopId,
         amount:    data.amount,
@@ -111,7 +115,6 @@ export async function transferFromPaymentsAction(
         note:      data.note.trim(),
       });
 
-      // Add to wallet
       await tx.wallet.upsert({
         where:  { shopId },
         create: { shopId, balance: data.amount },
@@ -134,4 +137,3 @@ export async function transferFromPaymentsAction(
     return { success: false, error: err instanceof Error ? err.message : "Transfer failed." };
   }
 }
-

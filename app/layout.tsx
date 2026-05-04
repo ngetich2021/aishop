@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
+};
+
 export const metadata: Metadata = {
   title: "Kwenik",
   description: "Business management platform",
@@ -22,7 +26,6 @@ export const metadata: Metadata = {
   icons: { icon: "/branton_logo.png", apple: "/branton_logo.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Kwenik" },
   formatDetection: { telephone: false },
-  themeColor: "#2563eb",
 };
 
 export default async function RootLayout({

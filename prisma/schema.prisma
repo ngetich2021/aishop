@@ -1,6 +1,6 @@
 // ============================================================
 //  Prisma Schema
-//  Provider: PostgreSQL
+//  Provider: SQLite / Turso (LibSQL)
 // ============================================================
 
 generator client {
@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // ============================================================
@@ -32,13 +32,14 @@ model User {
   shops        Shop[]
   loginLogs    LoginLog[]
   activityLogs ActivityLog[]
+  subscription UserSubscription?
 }
 
 model Profile {
   userId        String   @id
   role          String   @default("user")
   designation   String?
-  allowedRoutes String[] @default([])
+  allowedRoutes Json     @default("[]")
   fullName      String?
   email         String?
   contact1      String?
@@ -87,11 +88,16 @@ model VerificationToken {
 
 model Role {
   id            String   @id @default(cuid())
-  name          String   @unique
+  shopId        String
+  name          String
   description   String
-  allowedRoutes String[] @default([])
+  allowedRoutes Json     @default("[]")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, name])
 }
 
 // ============================================================
@@ -129,6 +135,9 @@ model Shop {
   transactions   Transaction[]
   margins        Margin[]
   wallet         Wallet?
+  billing        ShopBilling?
+  invites        ShopInvite[]
+  roles          Role[]
 }
 
 // ============================================================
@@ -137,22 +146,28 @@ model Shop {
 
 model Category {
   id        String   @id @default(cuid())
-  name      String   @unique
+  name      String
+  userId    String? // null = legacy global; set = scoped to this owner
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   subCategories SubCategory[]
+
+  @@unique([name, userId])
 }
 
 model SubCategory {
   id         String   @id @default(cuid())
-  name       String   @unique
+  name       String
+  userId     String? // matches parent category's userId
   categoryId String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products Product[]
+
+  @@unique([name, userId])
 }
 
 model Product {
@@ -289,7 +304,7 @@ model Sale {
   soldById           String
   totalAmount        Int
   paymentMethod      String   @default("cash")
-  paymentMethodsJson String?  // [{method,amount},...] for multi-payment
+  paymentMethodsJson String? // [{method,amount},...] for multi-payment
   customerName       String?
   customerPhone      String?
   isPrinted          Boolean  @default(false)
@@ -422,7 +437,7 @@ model Payment {
   shopId          String
   amount          Int
   method          String   @default("cash")
-  direction       String   @default("in")   // in | out
+  direction       String   @default("in") // in | out
   source          String   @default("sale") // sale | credit_payment | wallet_transfer_out
   note            String?
   saleId          String?
@@ -451,14 +466,14 @@ model Transaction {
   type          String   @default("deposit")
   // deposit | withdraw | transfer_out | transfer_in | transfer_to_payments
   // | expense | salary | advance | buy
-  sourceOfMoney  String
-  referenceType  String?  // Expense | Salary | Advance | Buy | CreditPayment
-  referenceId    String?
-  toShopName     String?
-  fromShopName   String?
-  authorizedBy   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  sourceOfMoney String
+  referenceType String? // Expense | Salary | Advance | Buy | CreditPayment
+  referenceId   String?
+  toShopName    String?
+  fromShopName  String?
+  authorizedBy  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
@@ -539,9 +554,9 @@ model ActivityLog {
   userId    String
   shopId    String?
   action    String
-  entity    String?  // Sale | Product | Staff | Advance | Expense | Buy | Asset …
+  entity    String? // Sale | Product | Staff | Advance | Expense | Buy | Asset …
   entityId  String?
-  details   String?  // JSON snapshot of what changed / was deleted
+  details   String? // JSON snapshot of what changed / was deleted
   path      String
   method    String
   createdAt DateTime @default(now())
@@ -551,4 +566,100 @@ model ActivityLog {
   @@index([userId])
   @@index([shopId])
   @@index([createdAt])
+}
+
+// ============================================================
+//  MONETIZATION & BILLING
+// ============================================================
+
+model UserSubscription {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  plan            String    @default("demo") // demo | demo_plus | pro
+  status          String    @default("active") // active | paused | expired
+  demoStartedAt   DateTime  @default(now())
+  expiresAt       DateTime?
+  mpesaPhone      String?
+  proBalance      Int       @default(0) // KES balance for pro plan (topped up via M-Pesa)
+  proActivatedAt  DateTime? // when pro was first activated
+  proLastBilledAt DateTime? // last daily deduction time
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments SubscriptionPayment[]
+}
+
+model SubscriptionPayment {
+  id                String   @id @default(cuid())
+  subscriptionId    String
+  plan              String
+  amount            Int
+  phone             String?
+  checkoutRequestId String?  @unique
+  mpesaRef          String?
+  status            String   @default("pending") // pending | completed | failed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscription UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+model ShopBilling {
+  id           String    @id @default(cuid())
+  shopId       String    @unique
+  dailyRate    Int       @default(30)
+  creationFee  Int       @default(100)
+  lastBilledAt DateTime?
+  status       String    @default("active") // active | suspended
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  shop    Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  history ShopBillingLog[]
+}
+
+model ShopBillingLog {
+  id        String   @id @default(cuid())
+  billingId String
+  shopId    String
+  amount    Int
+  type      String // creation | daily | suspension
+  status    String   @default("paid") // paid | failed
+  reason    String?
+  billedAt  DateTime @default(now())
+
+  billing ShopBilling @relation(fields: [billingId], references: [id], onDelete: Cascade)
+}
+
+model ShopInvite {
+  id          String   @id @default(cuid())
+  shopId      String
+  email       String
+  role        String   @default("staff")
+  fullName    String?
+  baseSalary  Int?
+  tel1        String?
+  designation String?
+  token       String   @unique @default(cuid())
+  expiresAt   DateTime
+  accepted    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model MpesaCallback {
+  id                String   @id @default(cuid())
+  checkoutRequestId String   @unique
+  merchantRequestId String?
+  resultCode        Int?
+  resultDesc        String?
+  mpesaReceiptNo    String?
+  amount            Int?
+  phoneNumber       String?
+  transactionDate   String?
+  processed         Boolean  @default(false)
+  rawJson           String
+  createdAt         DateTime @default(now())
 }

@@ -9,6 +9,7 @@ import {
 import { createPortal } from "react-dom";
 import { convertQuoteToSaleAction, deleteQuoteAction } from "./actions";
 import QuotePOSSheet from "./QuotePOSSheet";
+import { usePlan } from "@/components/PlanProvider";
 import ConvertModal, { type ConvertPayload } from "./ConvertModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -188,6 +189,7 @@ export default function QuoteView({
   hasStaffRecord, canSell, activeShopId, activeShopName, activeShopLocation,
 }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
 
   const [search, setSearch]             = useState("");
   const [staffFilter, setStaffFilter]   = useState("all");
@@ -287,7 +289,8 @@ export default function QuoteView({
               )}
               <button
                 onClick={() => { setEditQuote(undefined); setShowPOS(true); }}
-                disabled={!canSell}
+                disabled={!canSell || isDemo}
+                title={isDemo ? "Upgrade your plan to create quotes" : undefined}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200 transition-all"
               >
                 <Plus size={17} /> New Quote

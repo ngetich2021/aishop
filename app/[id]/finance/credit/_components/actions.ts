@@ -1,9 +1,9 @@
 "use server";
 
-import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { capturePayment } from "@/lib/actions";
+import { planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -12,11 +12,11 @@ export async function addCreditPaymentAction(
   shopId: string,
   data: { amount: number; method: string; note?: string }
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -33,7 +33,7 @@ export async function addCreditPaymentAction(
     if (!credit) return { success: false, error: "Credit record not found." };
 
     const prevPaid  = credit.creditPayments.reduce((s, p) => s + p.amount, 0);
-    const remaining = credit.amount - credit.downPayment; // net owed after downpayment
+    const remaining = credit.amount - credit.downPayment;
     const totalPaid = prevPaid + data.amount;
     const newStatus = totalPaid >= remaining ? "paid" : "partial";
 
@@ -51,7 +51,6 @@ export async function addCreditPaymentAction(
         where: { id: creditId },
         data:  { status: newStatus },
       });
-      // Capture in payments ledger so it appears in the total received
       await capturePayment(tx, {
         shopId,
         amount: data.amount,
@@ -68,11 +67,14 @@ export async function addCreditPaymentAction(
 }
 
 export async function deleteCreditAction(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const credit = await prisma.credit.findUnique({ where: { id }, select: { shopId: true } });
+  if (!credit) return { success: false, error: "Credit record not found." };
+
+  const guard = await planGuardMutate(credit.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -80,9 +82,8 @@ export async function deleteCreditAction(id: string): Promise<ActionResult> {
     return { success: false, error: "Only admins can delete credit records." };
 
   try {
-    const credit = await prisma.credit.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.credit.delete({ where: { id } });
-    if (credit?.shopId) revalidatePath(`/${credit.shopId}/finance/credit`, "page");
+    revalidatePath(`/${credit.shopId}/finance/credit`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

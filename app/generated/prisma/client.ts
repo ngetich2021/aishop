@@ -211,3 +211,33 @@ export type LoginLog = Prisma.LoginLogModel
  * 
  */
 export type ActivityLog = Prisma.ActivityLogModel
+/**
+ * Model UserSubscription
+ * 
+ */
+export type UserSubscription = Prisma.UserSubscriptionModel
+/**
+ * Model SubscriptionPayment
+ * 
+ */
+export type SubscriptionPayment = Prisma.SubscriptionPaymentModel
+/**
+ * Model ShopBilling
+ * 
+ */
+export type ShopBilling = Prisma.ShopBillingModel
+/**
+ * Model ShopBillingLog
+ * 
+ */
+export type ShopBillingLog = Prisma.ShopBillingLogModel
+/**
+ * Model ShopInvite
+ * 
+ */
+export type ShopInvite = Prisma.ShopInviteModel
+/**
+ * Model MpesaCallback
+ * 
+ */
+export type MpesaCallback = Prisma.MpesaCallbackModel

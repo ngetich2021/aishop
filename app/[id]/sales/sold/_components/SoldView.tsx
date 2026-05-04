@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { cancelSaleAction, markSalePrintedAction } from "./actions";
 import SellModal, { type NewSaleResult } from "./SellModal";
+import { usePlan } from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type SaleItem = { id: string; productName: string; quantity: number; price: number; discount: number };
@@ -449,6 +450,7 @@ export default function SoldView({
   stats, sales, staffList, shop, profile, methodBreakdown, canSell, products,
 }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
 
   const [search, setSearch]           = useState("");
   const [staffFilter, setStaffFilter] = useState("all");
@@ -553,7 +555,9 @@ export default function SoldView({
               {canSell && (
                 <button
                   onClick={() => setShowSell(true)}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors"
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to make sales" : undefined}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ShoppingBag size={15} /> New Sale
                 </button>

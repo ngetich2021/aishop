@@ -11,6 +11,7 @@ import {
 import CategoryManager from "./CategoryManager";
 import ProductFormModal from "./ProductFormModal";
 import { deleteProductAction } from "./actions";
+import { usePlan } from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,6 +198,7 @@ export default function ProductsView({
   shopId, activeShop, isOwner, stats, products, categories, subCategories,
 }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
 
   const [search,       setSearch]       = useState("");
   const [viewMode,     setViewMode]     = useState<"table" | "grid">("table");
@@ -381,13 +383,17 @@ export default function ProductsView({
               <>
                 <button
                   onClick={() => setShowCatMgr(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm transition"
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to manage categories" : undefined}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} /> Categories
                 </button>
                 <button
                   onClick={() => openForm("add")}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm transition"
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to add products" : undefined}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} /> Product
                 </button>
@@ -408,7 +414,9 @@ export default function ProductsView({
             {isOwner && !search && filterCat === "all" && filterStock === "all" && (
               <button
                 onClick={() => openForm("add")}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow transition"
+                disabled={isDemo}
+                title={isDemo ? "Upgrade your plan to add products" : undefined}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Plus size={15} /> Add first product
               </button>

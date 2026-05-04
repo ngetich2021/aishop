@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import * as z from "zod";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -55,26 +56,41 @@ export async function saveQuoteAction(_: ActionResult, formData: FormData): Prom
     prisma.profile.findUnique({ where: { userId }, select: { shopId: true, role: true } }),
   ]);
 
-  if (!staffRecord) return { success: false, error: "Your account is not linked to a staff record." };
-
   const role    = profile?.role?.toLowerCase().trim() ?? "staff";
-  const isAdmin = role === "admin" || role === "owner";
-
-  // Admin/owner cannot sell — only staff can
-  if (isAdmin) return { success: false, error: "Admins and owners cannot create sales. Only staff can sell." };
+  const isOwner = role === "admin" || role === "owner";
 
   const submittedShopId = formData.get("shopId")?.toString() ?? "";
-  const resolvedShopId  = profile?.shopId ?? staffRecord.shopId ?? submittedShopId;
-  if (!resolvedShopId) return { success: false, error: "Shop not assigned." };
 
-  // Verify staff belongs to this shop
-  const staffInShop = await prisma.staff.findFirst({
-    where: { userId, shopId: resolvedShopId },
-    select: { id: true },
-  });
-  if (!staffInShop) return { success: false, error: "You are not assigned to this shop." };
+  let resolvedShopId: string;
+  if (isOwner) {
+    // Owners use the shopId from the form (they are in the [id] route context)
+    resolvedShopId = submittedShopId;
+    if (!resolvedShopId) return { success: false, error: "Shop not specified." };
+    // Verify they own this shop
+    const owned = await prisma.shop.findUnique({ where: { id: resolvedShopId }, select: { userId: true } });
+    if (!owned || owned.userId !== userId) return { success: false, error: "Not your shop." };
+  } else {
+    if (!staffRecord) return { success: false, error: "Your account is not linked to a staff record." };
+    resolvedShopId = profile?.shopId ?? staffRecord.shopId ?? submittedShopId;
+    if (!resolvedShopId) return { success: false, error: "Shop not assigned." };
+    // Verify staff belongs to this shop
+    const staffInShop = await prisma.staff.findFirst({
+      where: { userId, shopId: resolvedShopId },
+      select: { id: true },
+    });
+    if (!staffInShop) return { success: false, error: "You are not assigned to this shop." };
+  }
 
   const quoteId = formData.get("quoteId")?.toString() ?? null;
+
+  const guard = quoteId
+    ? await planGuardMutate(resolvedShopId)
+    : await planGuardCreate(resolvedShopId, "quotes");
+  if (!guard.ok) return { success: false, error: guard.error };
+
+  // For quotes, soldById stores the Staff record ID for staff, or userId for owners
+  const soldById = isOwner ? userId : (staffRecord!.id);
+
   const itemsRaw = formData.get("itemsJson")?.toString();
   let items: z.infer<typeof quoteItemSchema>[] = [];
   try { items = JSON.parse(itemsRaw ?? "[]"); } catch { return { success: false, error: "Invalid items data" }; }
@@ -105,7 +121,7 @@ export async function saveQuoteAction(_: ActionResult, formData: FormData): Prom
         prisma.quote.update({
           where: { id: quoteId },
           data: {
-            soldById: staffRecord.id,
+            soldById,
             itemsJson,
             amount: totalAmount,
             customerName: validated.customerName ?? "",
@@ -125,7 +141,7 @@ export async function saveQuoteAction(_: ActionResult, formData: FormData): Prom
     } else {
       await prisma.quote.create({
         data: {
-          soldById: staffRecord.id,
+          soldById,
           itemsJson,
           amount: totalAmount,
           customerName: validated.customerName ?? "",
@@ -153,15 +169,18 @@ export async function saveQuoteAction(_: ActionResult, formData: FormData): Prom
 }
 
 export async function deleteQuoteAction(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const quote = await prisma.quote.findUnique({ where: { id }, select: { shopId: true } });
+  if (!quote) return { success: false, error: "Quote not found." };
+
+  const guard = await planGuardMutate(quote.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   try {
-    const quote = await prisma.quote.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({ where: { quoteId: id } }),
       prisma.quote.delete({ where: { id } }),
     ]);
-    if (quote?.shopId) revalidatePath(`/${quote.shopId}/sales/quote`, "page");
+    revalidatePath(`/${quote.shopId}/sales/quote`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed" };
@@ -186,19 +205,21 @@ export async function convertQuoteToSaleAction(
     return { success: false, error: "Payment method required to convert quote to sale." };
   }
 
+  // Fetch quote first so we can guard on its shopId
+  const quote = await prisma.quote.findUnique({
+    where:   { id: quoteId },
+    include: { quoteItems: { select: { productId: true, quantity: true, price: true, discount: true } } },
+  });
+  if (!quote) return { success: false, error: "Quote not found" };
+
+  const guard = await planGuardCreate(quote.shopId, "sales");
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const hasCredit   = paymentMethod === "credit" || splits.some(s => s.method === "credit");
   const creditSplit = splits.find(s => s.method === "credit");
   const cashSplits  = splits.filter(s => s.method !== "credit");
 
   try {
-    const quote = await prisma.quote.findUnique({
-      where:   { id: quoteId },
-      include: { quoteItems: { select: { productId: true, quantity: true, price: true, discount: true } } },
-    });
-
-    if (!quote) return { success: false, error: "Quote not found" };
-
-    // Resolve the userId from the Staff record stored in quote.soldById
     const staffRecord = await prisma.staff.findUnique({
       where:  { id: quote.soldById },
       select: { userId: true },

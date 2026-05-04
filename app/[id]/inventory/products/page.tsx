@@ -45,8 +45,12 @@ export default async function ProductsPage({ params }: Props) {
       include: { subCategory: { include: { category: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({
+      where:   { OR: [{ userId }, { userId: null }] },
+      orderBy: { name: "asc" },
+    }),
     prisma.subCategory.findMany({
+      where:   { OR: [{ userId }, { userId: null }] },
       include: { category: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),

@@ -480,7 +480,6 @@ export type SupplierCreateOrConnectWithoutShopInput = {
 
 export type SupplierCreateManyShopInputEnvelope = {
   data: Prisma.SupplierCreateManyShopInput | Prisma.SupplierCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type SupplierUpsertWithWhereUniqueWithoutShopInput = {
@@ -1390,7 +1389,6 @@ export type SupplierCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * The data used to create many Suppliers.
    */
   data: Prisma.SupplierCreateManyInput | Prisma.SupplierCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1409,7 +1407,6 @@ export type SupplierCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    * The data used to create many Suppliers.
    */
   data: Prisma.SupplierCreateManyInput | Prisma.SupplierCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

@@ -5,6 +5,7 @@ import { Search, Loader2, MoreVertical, Truck, Plus, X, Pencil, Trash2, Phone } 
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { createSupplierAction, updateSupplierAction, deleteSupplierAction } from "./actions";
+import { usePlan } from "@/components/PlanProvider";
 
 type Supplier = { id: string; name: string; contact1: string; contact2: string | null; goodsType: string | null; buyCount: number };
 type ActiveShop = { id: string; name: string; location: string };
@@ -109,6 +110,7 @@ function SupplierModal({
 
 export default function SuppliersView({ activeShop, isAdmin, isManager, suppliers }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
   const [search, setSearch]         = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [mounted, setMounted]       = useState(false);
@@ -158,7 +160,9 @@ export default function SuppliersView({ activeShop, isAdmin, isManager, supplier
             </div>
             {isManager && (
               <button onClick={() => setModal({ mode: "add" })}
-                className="flex items-center gap-1.5 bg-sky-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-sky-700 transition">
+                disabled={isDemo}
+                title={isDemo ? "Upgrade your plan to add suppliers" : undefined}
+                className="flex items-center gap-1.5 bg-sky-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-sky-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
                 <Plus size={14} /> Add Supplier
               </button>
             )}

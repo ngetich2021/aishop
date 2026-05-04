@@ -524,7 +524,6 @@ export type ReturnCreateOrConnectWithoutShopInput = {
 
 export type ReturnCreateManyShopInputEnvelope = {
   data: Prisma.ReturnCreateManyShopInput | Prisma.ReturnCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type ReturnUpsertWithWhereUniqueWithoutShopInput = {
@@ -586,7 +585,6 @@ export type ReturnCreateOrConnectWithoutSaleInput = {
 
 export type ReturnCreateManySaleInputEnvelope = {
   data: Prisma.ReturnCreateManySaleInput | Prisma.ReturnCreateManySaleInput[]
-  skipDuplicates?: boolean
 }
 
 export type ReturnUpsertWithWhereUniqueWithoutSaleInput = {
@@ -1532,7 +1530,6 @@ export type ReturnCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many Returns.
    */
   data: Prisma.ReturnCreateManyInput | Prisma.ReturnCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1551,7 +1548,6 @@ export type ReturnCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * The data used to create many Returns.
    */
   data: Prisma.ReturnCreateManyInput | Prisma.ReturnCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

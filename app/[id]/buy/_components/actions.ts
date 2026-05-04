@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { walletDeduct } from "@/lib/actions";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -18,18 +19,20 @@ export async function createBuyAction(
     authorizedBy?: string;
   }
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const guard = await planGuardCreate(shopId, "buys");
+  if (!guard.ok) return { success: false, error: guard.error };
 
-  const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
-    select: { fullName: true },
-  });
+  const [profile, user] = await Promise.all([
+    prisma.profile.findUnique({ where: { userId: guard.userId }, select: { fullName: true } }),
+    prisma.user.findUnique({ where: { id: guard.userId }, select: { name: true, email: true } }),
+  ]);
 
   if (!data.supplierId) return { success: false, error: "Supplier required." };
   if (!data.items || data.items.length === 0) return { success: false, error: "At least one item required." };
 
-  const totalAmount = data.items.reduce((s, i) => s + i.qty * i.price, 0);
+  const totalAmount   = data.items.reduce((s, i) => s + i.qty * i.price, 0);
+  const resolvedActor = data.authorizedBy?.trim() ||
+    profile?.fullName?.trim() || user?.name?.trim() || user?.email?.trim() || "System";
 
   try {
     await prisma.buy.create({
@@ -40,7 +43,7 @@ export async function createBuyAction(
         totalAmount,
         transportCost: data.transportCost ?? 0,
         status:        "pending",
-        authorizedBy:  data.authorizedBy ?? profile?.fullName ?? session.user.id,
+        authorizedBy:  resolvedActor,
       },
     });
     revalidatePath(`/${shopId}/buy`, "page");
@@ -54,28 +57,27 @@ export async function updateBuyStatusAction(
   id: string,
   status: "pending" | "received" | "cancelled"
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const buy = await prisma.buy.findUnique({
+    where:  { id },
+    select: { shopId: true, totalAmount: true, transportCost: true, authorizedBy: true, itemsJson: true, status: true, supplier: { select: { name: true } } },
+  });
+  if (!buy) return { success: false, error: "Purchase order not found." };
+
+  const guard = await planGuardMutate(buy.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { fullName: true },
   });
 
   try {
-    const buy = await prisma.buy.findUnique({
-      where:  { id },
-      select: { shopId: true, totalAmount: true, transportCost: true, authorizedBy: true, itemsJson: true, status: true, supplier: { select: { name: true } } },
-    });
-    if (!buy) return { success: false, error: "Purchase order not found." };
-
     if (status === "received" && buy.status !== "received") {
       const grandTotal = buy.totalAmount + buy.transportCost;
       const items = JSON.parse(buy.itemsJson) as BuyItem[];
-      const actorName = profile?.fullName ?? session.user.id;
+      const actorName = profile?.fullName ?? guard.userId;
 
       await prisma.$transaction(async tx => {
-        // 1. Deduct from wallet
         await walletDeduct(tx, {
           shopId:       buy.shopId,
           amount:       grandTotal,
@@ -84,7 +86,6 @@ export async function updateBuyStatusAction(
           authorizedBy: buy.authorizedBy ?? actorName,
         });
 
-        // 2. Update stock for matched products (best-effort by name)
         for (const item of items) {
           if (!item.name?.trim()) continue;
           const product = await tx.product.findFirst({
@@ -97,15 +98,11 @@ export async function updateBuyStatusAction(
           if (product) {
             await tx.product.update({
               where: { id: product.id },
-              data:  {
-                quantity:     { increment: item.qty },
-                buyingPrice:  item.price,
-              },
+              data:  { quantity: { increment: item.qty }, buyingPrice: item.price },
             });
           }
         }
 
-        // 3. Mark as received
         await tx.buy.update({ where: { id }, data: { status } });
       });
     } else {
@@ -124,8 +121,14 @@ export async function deleteBuyAction(id: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const buy = await prisma.buy.findUnique({ where: { id }, select: { shopId: true } });
+  if (!buy) return { success: false, error: "Purchase order not found." };
+
+  const guard = await planGuardMutate(buy.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const profile = await prisma.profile.findUnique({
-    where:  { userId: session.user.id },
+    where:  { userId: guard.userId },
     select: { role: true },
   });
   const role = profile?.role?.toLowerCase().trim();
@@ -133,9 +136,8 @@ export async function deleteBuyAction(id: string): Promise<ActionResult> {
     return { success: false, error: "Only admins can delete purchase orders." };
 
   try {
-    const buy = await prisma.buy.findUnique({ where: { id }, select: { shopId: true } });
     await prisma.buy.delete({ where: { id } });
-    if (buy?.shopId) revalidatePath(`/${buy.shopId}/buy`, "page");
+    revalidatePath(`/${buy.shopId}/buy`, "page");
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

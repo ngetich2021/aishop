@@ -733,7 +733,6 @@ export type StaffCreateOrConnectWithoutShopInput = {
 
 export type StaffCreateManyShopInputEnvelope = {
   data: Prisma.StaffCreateManyShopInput | Prisma.StaffCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type StaffUpsertWithWhereUniqueWithoutShopInput = {
@@ -1871,7 +1870,6 @@ export type StaffCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * The data used to create many Staff.
    */
   data: Prisma.StaffCreateManyInput | Prisma.StaffCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1890,7 +1888,6 @@ export type StaffCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extension
    * The data used to create many Staff.
    */
   data: Prisma.StaffCreateManyInput | Prisma.StaffCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { depositAction, withdrawAction, transferFromPaymentsAction } from "./actions";
+import { usePlan } from "@/components/PlanProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TxType = "deposit" | "withdraw" | "transfer_out" | "transfer_in" | "transfer_from_payments";
@@ -242,6 +243,7 @@ function TransferFromPaymentsModal({ shopId, paymentsBalance, onClose, onDone }:
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function WalletView({ activeShop, isAdmin, balance, paymentsBalance, transactions, stats }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
   const [search,     setSearch]     = useState("");
   const [modal,      setModal]      = useState<"deposit" | "withdraw" | "from_payments" | null>(null);
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
@@ -284,15 +286,21 @@ export default function WalletView({ activeShop, isAdmin, balance, paymentsBalan
             {isAdmin && (
               <div className="flex items-center gap-2 flex-wrap">
                 <button onClick={() => setModal("deposit")}
-                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm">
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to deposit" : undefined}
+                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
                   <ArrowUpCircle size={13} /> Deposit
                 </button>
                 <button onClick={() => setModal("from_payments")}
-                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-sm">
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to transfer" : undefined}
+                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
                   <ArrowLeftRight size={13} /> From Payments
                 </button>
                 <button onClick={() => setModal("withdraw")}
-                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition shadow-sm">
+                  disabled={isDemo}
+                  title={isDemo ? "Upgrade your plan to withdraw" : undefined}
+                  className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
                   <ArrowDownCircle size={13} /> Withdraw
                 </button>
               </div>
@@ -418,7 +426,9 @@ export default function WalletView({ activeShop, isAdmin, balance, paymentsBalan
                         </p>
                         {isAdmin && transactions.length === 0 && (
                           <button onClick={() => setModal("deposit")}
-                            className="mt-1 flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
+                            disabled={isDemo}
+                            title={isDemo ? "Upgrade your plan to deposit" : undefined}
+                            className="mt-1 flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
                             <Plus size={13} /> Make first deposit
                           </button>
                         )}

@@ -18,7 +18,7 @@ export default async function SoldPage({ params }: Props) {
   const [profile, staffRecord] = await Promise.all([
     prisma.profile.findUnique({
       where:  { userId },
-      select: { role: true, shopId: true, fullName: true },
+      select: { role: true, shopId: true, fullName: true, allowedRoutes: true },
     }),
     prisma.staff.findUnique({
       where:  { userId },
@@ -43,8 +43,12 @@ export default async function SoldPage({ params }: Props) {
   });
   if (!shop) redirect("/welcome");
 
-  // canSell: any staff assigned to this shop (not admin/owner)
-  const canSell = !isAdmin && !!staffRecord && staffRecord.shopId === shopId;
+  const allowedRoutes = (profile?.allowedRoutes ?? []) as string[];
+  const hasSalesRoute = allowedRoutes.some(r => r === "/sales" || "/sales".startsWith(r + "/"));
+
+  // owners/admins/managers always can sell; staff need a record or explicit sales route access
+  const canSell = isAdmin || role === "manager" ||
+    (!!staffRecord && staffRecord.shopId === shopId) || hasSalesRoute;
 
   // ── fetch data ────────────────────────────────────────────────────────────
   const [sales, staffList, products] = await Promise.all([

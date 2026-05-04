@@ -54,9 +54,8 @@ export function isRouteAllowed(
   const r = role.toLowerCase().trim();
   if (ADMIN_ROLES.has(r))   return true;
   if (MANAGER_ROLES.has(r)) return true;
-  if (allowedRoutes.length === 0) return false;
-  // Dashboard is always reachable if the user has any allowed routes —
-  // the page itself filters the widgets to only the sections they can access.
+  // Dashboard is always reachable — it filters its own widgets based on allowedRoutes.
   if (prefix === "/dashboard") return true;
+  if (allowedRoutes.length === 0) return false;
   return allowedRoutes.some(ar => ar === prefix || prefix.startsWith(ar + "/"));
 }

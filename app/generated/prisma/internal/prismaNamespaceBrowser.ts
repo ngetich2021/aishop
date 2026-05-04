@@ -84,7 +84,13 @@ export const ModelName = {
   Adjustment: 'Adjustment',
   Asset: 'Asset',
   LoginLog: 'LoginLog',
-  ActivityLog: 'ActivityLog'
+  ActivityLog: 'ActivityLog',
+  UserSubscription: 'UserSubscription',
+  SubscriptionPayment: 'SubscriptionPayment',
+  ShopBilling: 'ShopBilling',
+  ShopBillingLog: 'ShopBillingLog',
+  ShopInvite: 'ShopInvite',
+  MpesaCallback: 'MpesaCallback'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -94,9 +100,6 @@ export type ModelName = (typeof ModelName)[keyof typeof ModelName]
  */
 
 export const TransactionIsolationLevel = runtime.makeStrictEnum({
-  ReadUncommitted: 'ReadUncommitted',
-  ReadCommitted: 'ReadCommitted',
-  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 } as const)
 
@@ -170,6 +173,7 @@ export type VerificationTokenScalarFieldEnum = (typeof VerificationTokenScalarFi
 
 export const RoleScalarFieldEnum = {
   id: 'id',
+  shopId: 'shopId',
   name: 'name',
   description: 'description',
   allowedRoutes: 'allowedRoutes',
@@ -196,6 +200,7 @@ export type ShopScalarFieldEnum = (typeof ShopScalarFieldEnum)[keyof typeof Shop
 export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  userId: 'userId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -206,6 +211,7 @@ export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typ
 export const SubCategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  userId: 'userId',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -582,6 +588,104 @@ export const ActivityLogScalarFieldEnum = {
 export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
 
 
+export const UserSubscriptionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  plan: 'plan',
+  status: 'status',
+  demoStartedAt: 'demoStartedAt',
+  expiresAt: 'expiresAt',
+  mpesaPhone: 'mpesaPhone',
+  proBalance: 'proBalance',
+  proActivatedAt: 'proActivatedAt',
+  proLastBilledAt: 'proLastBilledAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserSubscriptionScalarFieldEnum = (typeof UserSubscriptionScalarFieldEnum)[keyof typeof UserSubscriptionScalarFieldEnum]
+
+
+export const SubscriptionPaymentScalarFieldEnum = {
+  id: 'id',
+  subscriptionId: 'subscriptionId',
+  plan: 'plan',
+  amount: 'amount',
+  phone: 'phone',
+  checkoutRequestId: 'checkoutRequestId',
+  mpesaRef: 'mpesaRef',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionPaymentScalarFieldEnum = (typeof SubscriptionPaymentScalarFieldEnum)[keyof typeof SubscriptionPaymentScalarFieldEnum]
+
+
+export const ShopBillingScalarFieldEnum = {
+  id: 'id',
+  shopId: 'shopId',
+  dailyRate: 'dailyRate',
+  creationFee: 'creationFee',
+  lastBilledAt: 'lastBilledAt',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ShopBillingScalarFieldEnum = (typeof ShopBillingScalarFieldEnum)[keyof typeof ShopBillingScalarFieldEnum]
+
+
+export const ShopBillingLogScalarFieldEnum = {
+  id: 'id',
+  billingId: 'billingId',
+  shopId: 'shopId',
+  amount: 'amount',
+  type: 'type',
+  status: 'status',
+  reason: 'reason',
+  billedAt: 'billedAt'
+} as const
+
+export type ShopBillingLogScalarFieldEnum = (typeof ShopBillingLogScalarFieldEnum)[keyof typeof ShopBillingLogScalarFieldEnum]
+
+
+export const ShopInviteScalarFieldEnum = {
+  id: 'id',
+  shopId: 'shopId',
+  email: 'email',
+  role: 'role',
+  fullName: 'fullName',
+  baseSalary: 'baseSalary',
+  tel1: 'tel1',
+  designation: 'designation',
+  token: 'token',
+  expiresAt: 'expiresAt',
+  accepted: 'accepted',
+  createdAt: 'createdAt'
+} as const
+
+export type ShopInviteScalarFieldEnum = (typeof ShopInviteScalarFieldEnum)[keyof typeof ShopInviteScalarFieldEnum]
+
+
+export const MpesaCallbackScalarFieldEnum = {
+  id: 'id',
+  checkoutRequestId: 'checkoutRequestId',
+  merchantRequestId: 'merchantRequestId',
+  resultCode: 'resultCode',
+  resultDesc: 'resultDesc',
+  mpesaReceiptNo: 'mpesaReceiptNo',
+  amount: 'amount',
+  phoneNumber: 'phoneNumber',
+  transactionDate: 'transactionDate',
+  processed: 'processed',
+  rawJson: 'rawJson',
+  createdAt: 'createdAt'
+} as const
+
+export type MpesaCallbackScalarFieldEnum = (typeof MpesaCallbackScalarFieldEnum)[keyof typeof MpesaCallbackScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -590,12 +694,11 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
 } as const
 
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const NullsOrder = {
@@ -604,4 +707,21 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 

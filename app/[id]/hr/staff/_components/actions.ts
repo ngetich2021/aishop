@@ -1,9 +1,13 @@
 "use server";
 
-import { auth }            from "@/auth";
-import prisma              from "@/lib/prisma";
-import { revalidatePath }  from "next/cache";
-import { z }               from "zod";
+import { auth }                  from "@/auth";
+import prisma                    from "@/lib/prisma";
+import { revalidatePath }        from "next/cache";
+import { z }                     from "zod";
+import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
+import { sendStaffInviteEmail }  from "@/lib/email";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -35,13 +39,14 @@ const phoneRx = /^(\+254|0)7\d{8}$/;
 const optPhone = z.string().regex(phoneRx, "Invalid phone number").or(z.literal("")).optional();
 
 const staffSchema = z.object({
-  fullName:   z.string().min(2, "Full name is required"),
-  tel1:       optPhone,
-  tel2:       optPhone,
-  mpesaNo:    z.string().regex(phoneRx, "Invalid M-Pesa number").or(z.literal("")).optional(),
-  baseSalary: z.coerce.number().min(0, "Salary must be ≥ 0"),
-  userId:     z.string().min(1, "Select a user"),
-  shopId:     z.string().min(1),
+  fullName:    z.string().min(2, "Full name is required"),
+  tel1:        optPhone,
+  tel2:        optPhone,
+  mpesaNo:     z.string().regex(phoneRx, "Invalid M-Pesa number").or(z.literal("")).optional(),
+  baseSalary:  z.coerce.number().min(0, "Salary must be ≥ 0"),
+  userId:      z.string().min(1, "Select a user"),
+  shopId:      z.string().min(1),
+  designation: z.string().optional(),
 });
 
 // ── SAVE STAFF (create or update) ─────────────────────────────────────────────
@@ -51,20 +56,40 @@ export async function saveStaffAction(
 ): Promise<ActionResult> {
   const staffId = formData.get("staffId") as string | null;
   const raw = Object.fromEntries(
-    ["fullName","tel1","tel2","mpesaNo","baseSalary","userId","shopId"]
+    ["fullName","tel1","tel2","mpesaNo","baseSalary","userId","shopId","designation"]
       .map(k => [k, formData.get(k)])
   );
   const parsed = staffSchema.safeParse(raw);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-  const { fullName, tel1, tel2, mpesaNo, baseSalary, userId, shopId } = parsed.data;
+  const { fullName, tel1, tel2, mpesaNo, baseSalary, userId, shopId, designation } = parsed.data;
+
+  const guard = staffId
+    ? await planGuardMutate(shopId)
+    : await planGuardCreate(shopId, "staff");
+  if (!guard.ok) return { success: false, error: guard.error };
 
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
   try {
     if (staffId) {
-      // Update existing
+      // Resolve designation routes when designation is provided on update
+      let updatedRoutes: string[] | undefined;
+      if (designation) {
+        const roleRecord = await prisma.role.findUnique({
+          where:  { shopId_name: { shopId, name: designation } },
+          select: { allowedRoutes: true },
+        });
+        updatedRoutes = (roleRecord?.allowedRoutes ?? []) as string[];
+      }
+
+      const profileUpdate: Record<string, unknown> = { fullName };
+      if (designation !== undefined) {
+        profileUpdate.designation = designation || null;
+        if (updatedRoutes !== undefined) profileUpdate.allowedRoutes = updatedRoutes;
+      }
+
       await prisma.$transaction([
         prisma.staff.update({
           where: { id: staffId },
@@ -72,14 +97,23 @@ export async function saveStaffAction(
         }),
         prisma.profile.upsert({
           where:  { userId },
-          create: { userId, shopId, role: "staff", fullName },
-          update: { fullName },
+          create: { userId, shopId, role: "staff", fullName, designation: designation || null, allowedRoutes: updatedRoutes ?? [] },
+          update: profileUpdate,
         }),
       ]);
     } else {
-      // Create new
       const exists = await prisma.staff.findUnique({ where: { userId }, select: { id: true } });
       if (exists) return { success: false, error: "This user is already a staff member." };
+
+      // Resolve designation's allowedRoutes so access is granted immediately on login
+      let allowedRoutes: string[] = [];
+      if (designation) {
+        const roleRecord = await prisma.role.findUnique({
+          where:  { shopId_name: { shopId, name: designation } },
+          select: { allowedRoutes: true },
+        });
+        allowedRoutes = (roleRecord?.allowedRoutes ?? []) as string[];
+      }
 
       await prisma.$transaction([
         prisma.staff.create({
@@ -87,8 +121,8 @@ export async function saveStaffAction(
         }),
         prisma.profile.upsert({
           where:  { userId },
-          create: { userId, shopId, role: "staff", fullName },
-          update: { shopId, role: "staff", fullName },
+          create: { userId, shopId, role: "staff", fullName, designation: designation || null, allowedRoutes },
+          update: { shopId, role: "staff", fullName, designation: designation || null, allowedRoutes },
         }),
       ]);
     }
@@ -101,6 +135,9 @@ export async function saveStaffAction(
 
 // ── DELETE STAFF ──────────────────────────────────────────────────────────────
 export async function deleteStaffAction(staffId: string, shopId: string): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
@@ -129,11 +166,15 @@ export async function assignDesignationAction(args: {
   shopId:      string;
 }): Promise<ActionResult> {
   const { staffUserId, designation, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
   const roleRecord = await prisma.role.findUnique({
-    where:  { name: designation },
+    where:  { shopId_name: { shopId, name: designation } },
     select: { allowedRoutes: true },
   });
   if (!roleRecord) return { success: false, error: "Designation not found." };
@@ -141,7 +182,7 @@ export async function assignDesignationAction(args: {
   try {
     await prisma.profile.update({
       where: { userId: staffUserId },
-      data:  { designation, allowedRoutes: roleRecord.allowedRoutes },
+      data:  { designation, allowedRoutes: roleRecord.allowedRoutes as string[] },
     });
     revalidatePath(`/${shopId}/hr/staff`, "page");
     return { success: true };
@@ -156,6 +197,10 @@ export async function removeDesignationAction(args: {
   shopId:      string;
 }): Promise<ActionResult> {
   const { staffUserId, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
@@ -178,6 +223,10 @@ export async function saveAllowedRoutesAction(args: {
   shopId:        string;
 }): Promise<ActionResult> {
   const { staffUserId, allowedRoutes, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
@@ -200,6 +249,10 @@ export async function assignStaffRoleAction(args: {
   shopId:      string;
 }): Promise<ActionResult> {
   const { staffUserId, roleName, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
@@ -226,6 +279,9 @@ export async function saveRoleAction(data: {
   allowedRoutes: string[];
   shopId:        string;
 }): Promise<ActionResult> {
+  const guard = await planGuardMutate(data.shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(data.shopId);
   if ("error" in check) return check;
 
@@ -245,23 +301,27 @@ export async function saveRoleAction(data: {
         where: { id: data.roleId },
         data:  { name: data.name, description: data.description, allowedRoutes: data.allowedRoutes },
       });
-      // Cascade rename to all profiles using the old designation name
       if (oldName && oldName !== data.name) {
+        const shopStaff = await prisma.staff.findMany({
+          where:  { shopId: data.shopId },
+          select: { userId: true },
+        });
+        const userIds = shopStaff.map(s => s.userId);
         await prisma.profile.updateMany({
-          where: { designation: oldName },
+          where: { userId: { in: userIds }, designation: oldName },
           data:  { designation: data.name, allowedRoutes: data.allowedRoutes },
         });
       }
     } else {
       await prisma.role.create({
-        data: { name: data.name, description: data.description, allowedRoutes: data.allowedRoutes },
+        data: { shopId: data.shopId, name: data.name, description: data.description, allowedRoutes: data.allowedRoutes },
       });
     }
     revalidatePath(`/${data.shopId}/hr/staff`, "page");
     return { success: true };
   } catch (e: unknown) {
     if ((e as { code?: string }).code === "P2002")
-      return { success: false, error: "A designation with that name already exists." };
+      return { success: false, error: "A designation with that name already exists in this shop." };
     return { success: false, error: "Save designation failed." };
   }
 }
@@ -269,16 +329,24 @@ export async function saveRoleAction(data: {
 // ── DELETE ROLE DEFINITION ────────────────────────────────────────────────────
 export async function deleteRoleAction(args: { roleId: string; shopId: string }): Promise<ActionResult> {
   const { roleId, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const check = await canManageShop(shopId);
   if ("error" in check) return check;
 
   try {
-    const role = await prisma.role.findUnique({ where: { id: roleId }, select: { name: true } });
+    const role = await prisma.role.findUnique({ where: { id: roleId }, select: { name: true, shopId: true } });
     if (!role) return { success: false, error: "Designation not found." };
 
-    // Clear all profiles assigned this designation
+    const shopStaff = await prisma.staff.findMany({
+      where:  { shopId: role.shopId },
+      select: { userId: true },
+    });
+    const userIds = shopStaff.map(s => s.userId);
     await prisma.profile.updateMany({
-      where: { designation: role.name },
+      where: { userId: { in: userIds }, designation: role.name },
       data:  { designation: null, allowedRoutes: [] },
     });
     await prisma.role.delete({ where: { id: roleId } });
@@ -286,5 +354,116 @@ export async function deleteRoleAction(args: { roleId: string; shopId: string })
     return { success: true };
   } catch {
     return { success: false, error: "Delete designation failed." };
+  }
+}
+
+// ── SEND STAFF INVITE ─────────────────────────────────────────────────────────
+export async function sendStaffInviteAction(args: {
+  shopId:       string;
+  email:        string;
+  fullName?:    string;
+  baseSalary?:  number;
+  tel1?:        string;
+  designation?: string;
+}): Promise<ActionResult & { inviteUrl?: string; emailError?: string }> {
+  const { shopId, email, fullName, baseSalary, tel1, designation } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
+  const role = "staff";
+  const check = await canManageShop(shopId);
+  if ("error" in check) return check;
+
+  const trimEmail = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
+    return { success: false, error: "Invalid email address." };
+  }
+
+  await prisma.shopInvite.deleteMany({
+    where: { shopId, email: trimEmail, accepted: false },
+  });
+
+  const shop = await prisma.shop.findUnique({
+    where:  { id: shopId },
+    select: { name: true, user: { select: { name: true } } },
+  });
+  if (!shop) return { success: false, error: "Shop not found." };
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  try {
+    const invite = await prisma.shopInvite.create({
+      data: {
+        shopId, email: trimEmail, role, expiresAt, accepted: false,
+        fullName:    fullName    || null,
+        baseSalary:  baseSalary  ?? null,
+        tel1:        tel1        || null,
+        designation: designation || null,
+      },
+    });
+
+    const inviteUrl = `${APP_URL}/invite/${invite.token as string}`;
+
+    let emailError: string | undefined;
+    try {
+      await sendStaffInviteEmail({
+        to:        trimEmail,
+        shopName:  shop.name,
+        ownerName: shop.user.name ?? "Your manager",
+        inviteUrl,
+        role,
+        fullName,
+      });
+    } catch (e) {
+      emailError = e instanceof Error ? e.message : "Email delivery failed";
+      console.error("[sendStaffInviteAction] email error:", emailError);
+    }
+
+    revalidatePath(`/${shopId}/hr/staff`, "page");
+    return { success: true, inviteUrl, emailError };
+  } catch {
+    return { success: false, error: "Failed to create invite." };
+  }
+}
+
+// ── FIND USER BY EMAIL (for direct-add flow) ──────────────────────────────────
+export async function findUserByEmailAction(email: string): Promise<{
+  userId: string; name: string; email: string; image: string | null; alreadyStaff: boolean;
+} | null> {
+  const user = await prisma.user.findFirst({
+    where:  { email: email.toLowerCase().trim() },
+    select: { id: true, name: true, email: true, image: true },
+  });
+  if (!user) return null;
+  const existing = await prisma.staff.findUnique({ where: { userId: user.id }, select: { id: true } });
+  return {
+    userId:      user.id,
+    name:        user.name  ?? "",
+    email:       user.email ?? "",
+    image:       user.image ?? null,
+    alreadyStaff: !!existing,
+  };
+}
+
+// ── CANCEL STAFF INVITE ───────────────────────────────────────────────────────
+export async function cancelStaffInviteAction(args: {
+  inviteId: string;
+  shopId:   string;
+}): Promise<ActionResult> {
+  const { inviteId, shopId } = args;
+
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
+  const check = await canManageShop(shopId);
+  if ("error" in check) return check;
+
+  try {
+    await prisma.shopInvite.delete({ where: { id: inviteId } });
+    revalidatePath(`/${shopId}/hr/staff`, "page");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Cancel failed." };
   }
 }

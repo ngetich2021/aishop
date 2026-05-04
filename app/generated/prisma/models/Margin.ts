@@ -472,7 +472,6 @@ export type MarginCreateOrConnectWithoutShopInput = {
 
 export type MarginCreateManyShopInputEnvelope = {
   data: Prisma.MarginCreateManyShopInput | Prisma.MarginCreateManyShopInput[]
-  skipDuplicates?: boolean
 }
 
 export type MarginUpsertWithWhereUniqueWithoutShopInput = {
@@ -1274,7 +1273,6 @@ export type MarginCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many Margins.
    */
   data: Prisma.MarginCreateManyInput | Prisma.MarginCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1293,7 +1291,6 @@ export type MarginCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * The data used to create many Margins.
    */
   data: Prisma.MarginCreateManyInput | Prisma.MarginCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

@@ -7,6 +7,7 @@ import {
   XCircle, Banknote, Clock, Users, TrendingDown, Send,
 } from "lucide-react";
 import { createPortal } from "react-dom";
+import { usePlan } from "@/components/PlanProvider";
 import {
   requestAdvanceAction,
   createAdvanceForStaffAction,
@@ -304,6 +305,7 @@ export default function AdvanceView({
   stats, advances, staffList,
 }: Props) {
   const router = useRouter();
+  const { isDemo } = usePlan();
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showModal, setShowModal]       = useState(false);
@@ -370,7 +372,9 @@ export default function AdvanceView({
               </p>
             </div>
             <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-all">
+              disabled={isDemo}
+              title={isDemo ? "Upgrade your plan to log advances" : undefined}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed">
               <Plus size={17} /> New Advance
             </button>
           </div>

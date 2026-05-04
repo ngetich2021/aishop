@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, logActivity } from "@/lib/actions";
+import { planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -13,6 +14,9 @@ export async function deletePaymentAction(
   id: string,
   shopId: string,
 ): Promise<ActionResult> {
+  const guard = await planGuardMutate(shopId);
+  if (!guard.ok) return { success: false, error: guard.error };
+
   const actor = await resolveActor(shopId, { requireAdmin: true });
   if (!actor) return { success: false, error: "Only admins can delete payments." };
 

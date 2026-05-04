@@ -500,7 +500,6 @@ export type ActivityLogCreateOrConnectWithoutUserInput = {
 
 export type ActivityLogCreateManyUserInputEnvelope = {
   data: Prisma.ActivityLogCreateManyUserInput | Prisma.ActivityLogCreateManyUserInput[]
-  skipDuplicates?: boolean
 }
 
 export type ActivityLogUpsertWithWhereUniqueWithoutUserInput = {
@@ -1335,7 +1334,6 @@ export type ActivityLogCreateManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * The data used to create many ActivityLogs.
    */
   data: Prisma.ActivityLogCreateManyInput | Prisma.ActivityLogCreateManyInput[]
-  skipDuplicates?: boolean
 }
 
 /**
@@ -1354,7 +1352,6 @@ export type ActivityLogCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ext
    * The data used to create many ActivityLogs.
    */
   data: Prisma.ActivityLogCreateManyInput | Prisma.ActivityLogCreateManyInput[]
-  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

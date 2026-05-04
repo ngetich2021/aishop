@@ -19,7 +19,7 @@ export default async function QuotePage({ params }: Props) {
   const [profile, staffRecord] = await Promise.all([
     prisma.profile.findUnique({
       where:  { userId },
-      select: { role: true, shopId: true, fullName: true },
+      select: { role: true, shopId: true, fullName: true, allowedRoutes: true },
     }),
     prisma.staff.findUnique({
       where:  { userId },
@@ -64,8 +64,12 @@ export default async function QuotePage({ params }: Props) {
 
   const activeShop = allShops.find(s => s.id === activeShopId) ?? shop;
 
-  // ── canSell: staff with a record for this shop can sell; admin/owner cannot ──
-  const canSell = !isAdmin && !!staffRecord && staffRecord.shopId === activeShopId;
+  const allowedRoutes = (profile?.allowedRoutes ?? []) as string[];
+  const hasSalesRoute = allowedRoutes.some(r => r === "/sales" || "/sales".startsWith(r + "/"));
+
+  // owners/admins/managers always can sell; staff need a record or explicit sales route access
+  const canSell = isAdmin || role === "manager" ||
+    (!!staffRecord && staffRecord.shopId === activeShopId) || hasSalesRoute;
 
   // ── fetch data ───────────────────────────────────────────────────────────────
   const [quotes, staffList, products] = await Promise.all([
