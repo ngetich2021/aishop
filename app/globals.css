@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+/* ── Class-based dark mode (toggled by ThemeProvider) ────────────────────── */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
 }
 
 @theme inline {
@@ -12,15 +20,52 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── Input visibility fix (text always readable on any device/OS theme) ── */
+input,
+textarea,
+select {
+  color: #111827;
+  -webkit-text-fill-color: #111827;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color: #f1f5f9;
+  -webkit-text-fill-color: #f1f5f9;
+}
+
+/* Placeholder contrast */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+/* ── Close / X button — always visible ───────────────────────────────────── */
+button[aria-label="Close"],
+button[aria-label="close"],
+.btn-close {
+  color: #374151 !important;
+  opacity: 1 !important;
+  min-width: 2rem;
+  min-height: 2rem;
+}
+
+.dark button[aria-label="Close"],
+.dark button[aria-label="close"],
+.dark .btn-close {
+  color: #e2e8f0 !important;
 }

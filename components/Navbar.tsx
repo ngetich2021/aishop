@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 
 import { isRouteAllowed }  from "@/lib/permissions";
+import { useTheme }        from "@/components/ThemeProvider";
 import { RiDashboard3Line } from "react-icons/ri";
 import { FaUserShield, FaShop } from "react-icons/fa6";
 import { FaMoneyBillTrendUp } from "react-icons/fa6";
@@ -18,7 +19,7 @@ import { FcSalesPerformance } from "react-icons/fc";
 import { FaPersonThroughWindow } from "react-icons/fa6";
 import { GiBuyCard } from "react-icons/gi";
 import { TbReportAnalytics } from "react-icons/tb";
-import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins, CreditCard } from "lucide-react";
+import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins, CreditCard, Sun, Moon } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const W_OPEN   = 248 as const;
@@ -66,9 +67,9 @@ function Tip({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="relative group/tip">
       {children}
-      <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-9999">
+      <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-9999">
         {label}
-        <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
+        <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
       </div>
     </div>
   );
@@ -81,9 +82,9 @@ function ProfileDropdown({
   const isStaff = role === "staff" || role === "manager";
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-500">
+    <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-500">
       {/* User card */}
-      <div className="px-4 py-4 bg-linear-to-br from-indigo-50 to-white border-b border-gray-100">
+      <div className="px-4 py-4 bg-linear-to-br from-indigo-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-indigo-100">
             {image ? (
@@ -95,8 +96,8 @@ function ProfileDropdown({
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-gray-900 truncate leading-tight">{name ?? "User"}</p>
-            <p className="text-xs text-gray-500 truncate">{email}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight">{name ?? "User"}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{email}</p>
             {role && (
               <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold capitalize ${roleBadgeColor(role)}`}>
                 {role}
@@ -111,7 +112,7 @@ function ProfileDropdown({
         {isStaff && shopId && (
           <Link
             href={`/${shopId}/hr/advance`}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors font-medium"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-medium"
           >
             <HandCoins size={17} />
             Request Advance
@@ -119,14 +120,14 @@ function ProfileDropdown({
         )}
         <Link
           href="/billing"
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-700 hover:bg-yellow-50 transition-colors font-medium"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-yellow-700 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors font-medium"
         >
           <CreditCard size={17} />
           Billing &amp; Plans
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
         >
           <IoIosLogOut size={17} />
           Sign out
@@ -165,8 +166,8 @@ function NavList({
               className={[
                 "w-full flex items-center rounded-xl px-3 py-2.5 transition-all duration-150 select-none",
                 subActive
-                  ? "text-indigo-700 font-bold bg-indigo-50"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                  ? "text-indigo-700 dark:text-indigo-300 font-bold bg-indigo-50 dark:bg-indigo-900/40"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-900 dark:hover:text-gray-100",
                 showLabel ? "gap-3 justify-between" : "justify-center",
               ].join(" ")}
             >
@@ -199,8 +200,8 @@ function NavList({
                         className={[
                           "flex items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] transition-all",
                           isActive(sub.href)
-                            ? "bg-indigo-100 text-indigo-700 font-semibold"
-                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900",
+                            ? "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold"
+                            : "text-gray-500 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/40 hover:text-gray-900 dark:hover:text-gray-200",
                         ].join(" ")}
                       >
                         <ChevronRight size={11} className="shrink-0 opacity-40" />
@@ -223,7 +224,7 @@ function NavList({
               "flex items-center rounded-xl px-3 py-2.5 transition-all duration-150",
               isActive(item.href!)
                 ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200 font-bold"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-900 dark:hover:text-gray-100",
               showLabel ? "gap-3" : "justify-center",
             ].join(" ")}
           >
@@ -270,8 +271,8 @@ function SidebarUser({
 
   return (
     <div className="px-3 pt-3 pb-2">
-      <div className="bg-indigo-50 rounded-2xl px-3 py-3 flex items-center gap-3">
-        <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-white">
+      <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl px-3 py-3 flex items-center gap-3">
+        <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 dark:border-indigo-700 shrink-0 bg-white dark:bg-gray-800">
           {image ? (
             <Image src={image} alt="Avatar" fill sizes="40px" className="object-cover" />
           ) : (
@@ -281,8 +282,8 @@ function SidebarUser({
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-[0.8rem] font-bold text-gray-900 truncate leading-tight">{name ?? "User"}</p>
-          <p className="text-[0.65rem] text-gray-400 truncate">{email}</p>
+          <p className="text-[0.8rem] font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">{name ?? "User"}</p>
+          <p className="text-[0.65rem] text-gray-400 dark:text-gray-500 truncate">{email}</p>
           {role && (
             <span className={`mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-semibold capitalize ${roleBadgeColor(role)}`}>
               {role}
@@ -301,6 +302,7 @@ export default function Navbar() {
   const [openMenus,   setOpenMenus]   = useState<Record<string, boolean>>({});
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const pathname = usePathname();
   const { data: session, update } = useSession();
@@ -390,7 +392,7 @@ export default function Navbar() {
     <>
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header
-        className="fixed left-0 right-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm"
+        className="fixed left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shadow-sm dark:shadow-gray-900"
         style={{ height: H_TOP, top: "var(--banner-h, 0px)" }}
       >
         {/* Left */}
@@ -398,7 +400,7 @@ export default function Navbar() {
           {/* Mobile hamburger */}
           <button
             type="button"
-            className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+            className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"
             onClick={() => setMobileOpen((p) => !p)}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -420,7 +422,7 @@ export default function Navbar() {
           {/* Desktop collapse toggle */}
           <button
             type="button"
-            className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition ml-1"
+            className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition ml-1"
             onClick={() => setCollapsed((p) => !p)}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -429,18 +431,28 @@ export default function Navbar() {
 
           {/* Section breadcrumb */}
           {currentSection && (
-            <div className="hidden sm:flex items-center gap-1.5 text-gray-400 text-xs ml-2">
+            <div className="hidden sm:flex items-center gap-1.5 text-gray-400 dark:text-gray-500 text-xs ml-2">
               <ChevronRight size={13} />
-              <span className="font-semibold text-gray-600">{currentSection}</span>
+              <span className="font-semibold text-gray-600 dark:text-gray-300">{currentSection}</span>
             </div>
           )}
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-2.5">
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition"
+          >
+            {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+
           {/* Shop chip */}
           {shopChip && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[0.7rem] font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[0.7rem] font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
               Shop {shopChip}
             </span>
@@ -479,7 +491,7 @@ export default function Navbar() {
 
       {/* ── DESKTOP SIDEBAR ──────────────────────────────────────────────── */}
       <aside
-        className="hidden md:flex flex-col fixed z-40 bg-white border-r border-gray-200 transition-[width] duration-200 overflow-hidden"
+        className="hidden md:flex flex-col fixed z-40 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-[width] duration-200 overflow-hidden"
         style={{ top: `calc(${H_TOP}px + var(--banner-h, 0px))`, bottom: 0, width: collapsed ? W_MINI : W_OPEN }}
       >
         {/* User card */}
@@ -492,7 +504,7 @@ export default function Navbar() {
               image={user?.image}
               role={user?.role}
             />
-            <div className="mx-3 border-t border-gray-100" />
+            <div className="mx-3 border-t border-gray-100 dark:border-gray-700" />
           </>
         )}
 
@@ -507,13 +519,13 @@ export default function Navbar() {
         />
 
         {/* Bottom actions */}
-        <div className="border-t border-gray-100 px-2 py-2.5 flex flex-col gap-1 mt-auto">
+        <div className="border-t border-gray-100 dark:border-gray-700 px-2 py-2.5 flex flex-col gap-1 mt-auto">
           {/* Switch shops */}
           {collapsed ? (
             <Tip label="Switch Shops">
               <Link
                 href="/welcome"
-                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all"
               >
                 <ArrowLeftRight size={18} />
               </Link>
@@ -521,7 +533,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/welcome"
-              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all"
             >
               <ArrowLeftRight size={18} />
               <span className="text-[0.8rem] font-semibold">Switch Shops</span>
@@ -534,7 +546,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
               >
                 <IoIosLogOut size={18} />
               </button>
@@ -543,7 +555,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
             >
               <IoIosLogOut size={18} />
               <span className="text-[0.8rem] font-semibold">Sign out</span>
@@ -562,12 +574,12 @@ export default function Navbar() {
           />
 
           <div
-            className="relative z-10 flex flex-col bg-white shadow-2xl"
+            className="relative z-10 flex flex-col bg-white dark:bg-gray-900 shadow-2xl"
             style={{ width: W_OPEN }}
           >
             {/* Drawer header */}
             <div
-              className="flex items-center justify-between px-4 border-b border-gray-100 shrink-0"
+              className="flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-700 shrink-0"
               style={{ height: H_TOP }}
             >
               <div className="flex items-center gap-2.5">
@@ -576,7 +588,7 @@ export default function Navbar() {
                 </div>
                 <span className="text-sm font-extrabold text-indigo-700">Kwenik</span>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition">
+              <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-300 transition" aria-label="Close">
                 <X size={18} />
               </button>
             </div>
@@ -584,8 +596,8 @@ export default function Navbar() {
             {/* User card */}
             {session && (
               <div className="px-3 pt-3 pb-2">
-                <div className="bg-indigo-50 rounded-2xl px-3 py-3 flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 shrink-0 bg-white">
+                <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl px-3 py-3 flex items-center gap-3">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 dark:border-indigo-700 shrink-0 bg-white dark:bg-gray-800">
                     {user?.image ? (
                       <Image src={user.image} alt="Avatar" fill sizes="40px" className="object-cover" />
                     ) : (
@@ -595,8 +607,8 @@ export default function Navbar() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[0.8rem] font-bold text-gray-900 truncate">{user?.name ?? "User"}</p>
-                    <p className="text-[0.65rem] text-gray-400 truncate">{user?.email}</p>
+                    <p className="text-[0.8rem] font-bold text-gray-900 dark:text-gray-100 truncate">{user?.name ?? "User"}</p>
+                    <p className="text-[0.65rem] text-gray-400 dark:text-gray-500 truncate">{user?.email}</p>
                     {user?.role && (
                       <span className={`mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-semibold capitalize ${roleBadgeColor(user.role)}`}>
                         {user.role}
@@ -604,7 +616,7 @@ export default function Navbar() {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 border-t border-gray-100" />
+                <div className="mt-2 border-t border-gray-100 dark:border-gray-700" />
               </div>
             )}
 
@@ -622,18 +634,18 @@ export default function Navbar() {
             </div>
 
             {/* Drawer bottom */}
-            <div className="border-t border-gray-100 px-2 py-2.5 flex flex-col gap-1">
+            <div className="border-t border-gray-100 dark:border-gray-700 px-2 py-2.5 flex flex-col gap-1">
               <Link
                 href="/welcome"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all"
               >
                 <ArrowLeftRight size={18} />
                 <span className="text-[0.8rem] font-semibold">Switch Shops</span>
               </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
               >
                 <IoIosLogOut size={18} />
                 <span className="text-[0.8rem] font-semibold">Sign out</span>

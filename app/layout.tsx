@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
-import PWAInit from "@/components/PWAInit";
+import { SessionProvider }      from "next-auth/react";
+import PWAInit                  from "@/components/PWAInit";
+import { ThemeProvider }        from "@/components/ThemeProvider";
+import NavigationProgress       from "@/components/NavigationProgress";
 
 
 const geistSans = Geist({
@@ -41,9 +43,12 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <PWAInit />
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <NavigationProgress />
+        <ThemeProvider>
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

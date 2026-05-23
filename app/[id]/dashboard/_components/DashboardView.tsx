@@ -6,6 +6,7 @@ import {
   TrendingUp, TrendingDown, ShoppingCart, Package, Users, AlertCircle,
   ArrowUpRight, BarChart3, Star, DollarSign, Activity, ShoppingBag,
   Building2, ArrowRightLeft, Banknote, Store, Wallet, Zap, CreditCard, Lock,
+  GanttChart, Truck, ClipboardList, PiggyBank, BookOpen,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -375,6 +376,38 @@ export default function DashboardView({
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div className="mx-auto max-w-screen-2xl px-4 pb-12 md:px-6 space-y-5">
 
+        {/* ── Shortcuts ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          {([
+            { label: "New Sale",   href: `/${shopId}/sales/sold`,         ok: canSales,            icon: ShoppingBag,   bg: "from-emerald-600 to-emerald-700",  ring: "ring-emerald-500/30", text: "text-emerald-300" },
+            { label: "Expenses",   href: `/${shopId}/finance/expenses`,   ok: canFinance,           icon: PiggyBank,     bg: "from-rose-600 to-rose-700",        ring: "ring-rose-500/30",    text: "text-rose-300"    },
+            { label: "Inventory",  href: `/${shopId}/inventory/products`, ok: canInventory,         icon: Package,       bg: "from-sky-600 to-sky-700",          ring: "ring-sky-500/30",     text: "text-sky-300"     },
+            { label: "HR",         href: `/${shopId}/hr/staff`,           ok: canHR,                icon: Users,         bg: "from-violet-600 to-violet-700",    ring: "ring-violet-500/30",  text: "text-violet-300"  },
+            { label: "Finance",    href: `/${shopId}/finance/payments`,   ok: canFinance,           icon: Wallet,        bg: "from-amber-600 to-amber-700",      ring: "ring-amber-500/30",   text: "text-amber-300"   },
+            { label: "Suppliers",  href: `/${shopId}/suppliers`,          ok: true,                 icon: Truck,         bg: "from-cyan-600 to-cyan-700",        ring: "ring-cyan-500/30",    text: "text-cyan-300"    },
+            { label: "Reports",    href: `/${shopId}/reports`,            ok: permissions.canReports, icon: BookOpen,    bg: "from-indigo-600 to-indigo-700",    ring: "ring-indigo-500/30",  text: "text-indigo-300"  },
+            { label: "Buy",        href: `/${shopId}/buy`,                ok: true,                 icon: ClipboardList, bg: "from-teal-600 to-teal-700",       ring: "ring-teal-500/30",    text: "text-teal-300"    },
+          ] as const).map(({ label, href, ok, icon: Icon, bg, ring, text }) => (
+            ok ? (
+              <Link key={label} href={href}
+                className={`group flex flex-col items-center gap-2 rounded-2xl p-3 bg-gray-900/60 border border-gray-800 hover:border-gray-600 hover:bg-gray-800/80 transition-all active:scale-95`}>
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-md ring-2 ${ring} group-hover:scale-110 transition-transform`}>
+                  <Icon size={17} className="text-white" />
+                </div>
+                <span className={`text-[0.65rem] font-semibold ${text} leading-tight text-center`}>{label}</span>
+              </Link>
+            ) : (
+              <div key={label}
+                className="flex flex-col items-center gap-2 rounded-2xl p-3 bg-gray-900/30 border border-gray-800/40 cursor-not-allowed opacity-35">
+                <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center">
+                  <Lock size={15} className="text-gray-600" />
+                </div>
+                <span className="text-[0.65rem] font-semibold text-gray-700 leading-tight text-center">{label}</span>
+              </div>
+            )
+          ))}
+        </div>
+
         {/* KPI cards row */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <KpiCard
@@ -515,6 +548,8 @@ export default function DashboardView({
                 { label: "Finance",   href: `/${shopId}/finance/payments`,   ok: canFinance,   icon: <BarChart3   size={12} /> },
                 { label: "Inventory", href: `/${shopId}/inventory/products`, ok: canInventory, icon: <Package     size={12} /> },
                 { label: "HR",        href: `/${shopId}/hr/staff`,           ok: canHR,        icon: <Users       size={12} /> },
+                { label: "Reports",   href: `/${shopId}/reports`,            ok: permissions.canReports, icon: <GanttChart size={12} /> },
+                { label: "Buy",       href: `/${shopId}/buy`,                ok: true,         icon: <Truck size={12} /> },
               ].map(link => (
                 link.ok
                   ? <Link key={link.label} href={link.href}
