@@ -91,7 +91,7 @@ export async function updateBuyStatusAction(
           const product = await tx.product.findFirst({
             where: {
               shopId:      buy.shopId,
-              productName: { equals: item.name.trim(), mode: "insensitive" },
+              productName: item.name.trim(),
             },
             select: { id: true },
           });

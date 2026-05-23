@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     if (code) {
       const cb = await prisma.mpesaCallback.findFirst({
         where: {
-          mpesaReceiptNo: { equals: code, mode: "insensitive" },
+          mpesaReceiptNo: code.toUpperCase(),
           resultCode:     0,
         },
       }).catch(() => null);
