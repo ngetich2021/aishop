@@ -8,7 +8,9 @@
  *   curl "https://yourdomain.com/api/mpesa/c2b/register?secret=YOUR_SECRET"
  */
 import { NextRequest }       from "next/server";
-import { registerC2BUrls, C2B_SHORTCODE } from "@/lib/mpesa";
+import { registerC2BUrls } from "@/lib/mpesa";
+
+const C2B_SHORTCODE = process.env.MPESA_SHORTCODE!;
 
 const BILLING_SECRET = process.env.BILLING_SECRET ?? "kwenik-billing-2024";
 
