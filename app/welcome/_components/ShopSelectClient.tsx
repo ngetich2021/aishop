@@ -108,15 +108,20 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
   const router      = useRouter();
   const { update }  = useSession();
 
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [modalMode, setModalMode]   = useState<"add" | "edit" | "view">("add");
-  const [activeShop, setActiveShop] = useState<ShopData | undefined>();
-  const [search, setSearch]         = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuTop, setMenuTop]       = useState(0);
-  const [menuLeft, setMenuLeft]     = useState(0);
-  const openShopRef                 = useRef<Shop | null>(null);
+  const [modalOpen,    setModalOpen]    = useState(false);
+  const [modalMode,    setModalMode]    = useState<"add" | "edit" | "view">("add");
+  const [activeShop,   setActiveShop]   = useState<ShopData | undefined>();
+  const [search,       setSearch]       = useState("");
+  const [deletingId,   setDeletingId]   = useState<string | null>(null);
+  const [openMenuId,   setOpenMenuId]   = useState<string | null>(null);
+  const [menuTop,      setMenuTop]      = useState(0);
+  const [menuLeft,     setMenuLeft]     = useState(0);
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
+  const [signingOut,   setSigningOut]   = useState(false);
+  const openShopRef                     = useRef<Shop | null>(null);
+
+  // True while any navigation is in progress — blocks all interactive elements
+  const busy = navigatingId !== null || signingOut;
 
   const planStatus = getPlanStatus(plan, planExpiry);
   const isActive   = planStatus === "pro" || planStatus === "demo_plus" || planStatus === "demo";
@@ -182,6 +187,18 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
     finally { setDeletingId(null); }
   };
 
+  const handleEnterShop = (shopId: string) => {
+    if (busy) return;
+    setNavigatingId(shopId);
+    router.push(`/${shopId}/dashboard`);
+  };
+
+  const handleSignOut = async () => {
+    if (busy) return;
+    setSigningOut(true);
+    await signOut({ callbackUrl: "/" });
+  };
+
   const filtered = shops.filter((s) =>
     `${s.name} ${s.location}`.toLowerCase().includes(search.toLowerCase())
   );
@@ -242,16 +259,19 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
               {canManage && (
                 <button
                   onClick={() => openModal("add")}
-                  className="flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition"
+                  disabled={busy}
+                  className="flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-semibold px-5 py-2.5 rounded-xl text-sm shadow transition disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <Plus size={16} /> Add Shop
                 </button>
               )}
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-4 py-2.5 rounded-xl text-sm border border-white/20 transition"
+                onClick={handleSignOut}
+                disabled={busy}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-4 py-2.5 rounded-xl text-sm border border-white/20 transition disabled:opacity-50 disabled:pointer-events-none"
               >
-                <LogOut size={15} /> Sign out
+                {signingOut ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                {signingOut ? "Signing out…" : "Sign out"}
               </button>
             </div>
           </div>
@@ -290,7 +310,8 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
               {canManage && !search && (
                 <button
                   onClick={() => openModal("add")}
-                  className="mt-2 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow"
+                  disabled={busy}
+                  className="mt-2 flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <Plus size={15} /> Add your first shop
                 </button>
@@ -301,12 +322,23 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
               {filtered.map((shop, i) => (
                 <div
                   key={shop.id}
-                  className="group relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer"
+                  className={`group relative bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 overflow-hidden
+                    ${navigatingId === shop.id ? "shadow-md ring-2 ring-blue-400" : ""}
+                    ${busy && navigatingId !== shop.id ? "opacity-50 pointer-events-none cursor-not-allowed" : "hover:shadow-md hover:-translate-y-0.5 cursor-pointer"}
+                  `}
                   style={{ animationDelay: `${i * 0.04}s` }}
-                  onClick={() => router.push(`/${shop.id}/dashboard`)}
+                  onClick={() => isActive && handleEnterShop(shop.id)}
                 >
                   {/* Top stripe — green if active, orange if suspended */}
                   <div className={`h-1 w-full ${isActive ? "bg-linear-to-r from-blue-500 to-indigo-500" : "bg-linear-to-r from-orange-400 to-red-400"}`} />
+
+                  {/* Loading overlay when entering this shop */}
+                  {navigatingId === shop.id && (
+                    <div className="absolute inset-0 z-10 bg-white/80 flex flex-col items-center justify-center gap-2 rounded-2xl">
+                      <Loader2 size={28} className="animate-spin text-blue-600" />
+                      <span className="text-xs font-semibold text-blue-700">Opening…</span>
+                    </div>
+                  )}
 
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
@@ -330,8 +362,9 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
                         )}
                         {canManage && (
                           <button
-                            onClick={(e) => toggleMenu(shop, e)}
-                            className={`p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition ${openMenuId === shop.id ? "bg-gray-100 text-gray-600" : ""}`}
+                            onClick={(e) => { if (!busy) toggleMenu(shop, e); else e.stopPropagation(); }}
+                            disabled={busy}
+                            className={`p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition disabled:opacity-0 ${openMenuId === shop.id ? "bg-gray-100 text-gray-600" : ""}`}
                           >
                             <MoreVertical size={16} />
                           </button>
@@ -354,13 +387,13 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
                       <div className="flex items-center justify-between">
                         {isActive ? (
                           <span className="text-xs font-semibold text-blue-600 group-hover:text-blue-700 transition">
-                            Click to enter →
+                            {navigatingId === shop.id ? "Opening…" : "Click to enter →"}
                           </span>
                         ) : (
                           <Link
                             href="/billing"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-semibold text-orange-500 hover:text-orange-700 transition flex items-center gap-1"
+                            onClick={(e) => { e.stopPropagation(); if (busy) e.preventDefault(); }}
+                            className={`text-xs font-semibold text-orange-500 hover:text-orange-700 transition flex items-center gap-1 ${busy ? "pointer-events-none opacity-50" : ""}`}
                           >
                             <CreditCard size={11} /> Upgrade to unlock
                           </Link>

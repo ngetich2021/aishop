@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from 'react';
 import Image from 'next/image';
 import { SignInButton } from './Sign-in';
 import PWAInstallBar from './PWAInstallBar';
@@ -13,6 +16,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export default function GoogleSignIn({ authError }: { authError?: string }) {
+  const [loading, setLoading] = useState(false);
+
   const errorMsg = authError
     ? (ERROR_MESSAGES[authError] ?? ERROR_MESSAGES.Default)
     : null;
@@ -54,12 +59,12 @@ export default function GoogleSignIn({ authError }: { authError?: string }) {
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl blur opacity-60 group-hover:opacity-90 transition duration-300" />
               <div className="relative bg-white rounded-xl px-6 py-5 border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
-                <SignInButton />
+                <SignInButton loading={loading} onLoading={setLoading} />
               </div>
             </div>
 
-            {/* Install / Share */}
-            <div className="pt-1">
+            {/* Install / Share — disabled while signing in */}
+            <div className={`pt-1 transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
               <p className="text-[0.7rem] text-gray-400 text-center font-medium mb-3 uppercase tracking-widest">Get the App</p>
               <PWAInstallBar />
             </div>
@@ -68,7 +73,10 @@ export default function GoogleSignIn({ authError }: { authError?: string }) {
             <div className="pt-2 space-y-1 text-center border-t border-gray-100">
               <p className="text-[0.7rem] text-gray-400">
                 Need help?{' '}
-                <a href="tel:+254704876954" className="text-blue-600 hover:text-blue-700 font-bold">
+                <a
+                  href="tel:+254704876954"
+                  className={`text-blue-600 hover:text-blue-700 font-bold ${loading ? "pointer-events-none opacity-40" : ""}`}
+                >
                   +254 704 876 954
                 </a>
               </p>
