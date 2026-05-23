@@ -62,7 +62,14 @@ export default async function WelcomePage() {
     });
   }
 
-  const role = profile.role.toLowerCase().trim();
+  const role    = profile.role.toLowerCase().trim();
+  const jwtRole = (session.user.role ?? "user").toLowerCase().trim();
+
+  // JWT is stale (e.g. role was just promoted in DB but token not yet refreshed)
+  // Trigger a one-time session.update() so the Navbar shows the correct role.
+  if (jwtRole !== role) {
+    return <SessionRefresher target="/welcome" />;
+  }
 
   // ── STAFF / MANAGER ───────────────────────────────────────────────────────
   if (role === "staff" || role === "manager") {
@@ -96,6 +103,16 @@ export default async function WelcomePage() {
 
     // Staff with no shop assigned
     return <WaitingPage userName={userName} />;
+  }
+
+  // ── ROLE = "user" — if they already own shops, auto-promote to owner ─────
+  // Handles timing edge case where role wasn't updated in the session yet.
+  if (role === "user") {
+    const ownedShops = await prisma.shop.count({ where: { userId } });
+    if (ownedShops > 0) {
+      await prisma.profile.update({ where: { userId }, data: { role: "owner" } });
+      return <SessionRefresher target="/welcome" />;
+    }
   }
 
   // ── ROLE = "user" — check for a pending or accepted invite ───────────────

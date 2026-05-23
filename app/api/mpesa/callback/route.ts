@@ -92,9 +92,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Log every callback so we can see what Safaricom sends
+  console.log(`[mpesa/callback] id=${checkoutRequestId} code=${resultCode} desc="${resultDesc}" receipt=${mpesaReceiptNo}`);
+
   // Only reconcile on success
   if (resultCode !== 0 || !checkoutRequestId) {
-    // Mark payment as failed if we have a record
     if (checkoutRequestId) {
       try {
         await prisma.subscriptionPayment.updateMany({
@@ -116,14 +118,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Find pending payment
+  // Find payment (pending or already completed-without-receipt)
   try {
     const payment = await prisma.subscriptionPayment.findUnique({
       where: { checkoutRequestId },
     });
 
-    if (!payment || payment.status !== "pending") {
-      // Already processed or no record — still return 200
+    if (!payment) {
+      return Response.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    }
+
+    if (payment.status === "completed") {
+      // querySTK beat us here — just backfill the receipt code if it's missing
+      if (mpesaReceiptNo && !payment.mpesaRef) {
+        await prisma.subscriptionPayment.update({
+          where: { id: payment.id },
+          data:  { mpesaRef: mpesaReceiptNo, updatedAt: new Date() },
+        });
+        console.log(`[mpesa/callback] backfilled receipt ${mpesaReceiptNo} for already-completed payment ${payment.id}`);
+      }
+      return Response.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    }
+
+    if (payment.status !== "pending") {
       return Response.json({ ResultCode: 0, ResultDesc: "Accepted" });
     }
 

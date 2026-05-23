@@ -78,30 +78,45 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     }
     if (cb?.resultCode !== null && cb?.resultCode !== undefined && cb.resultCode !== 0) {
       // Callback arrived with failure
+      console.log(`[mpesa/status] callback failure — code=${cb.resultCode} id=${checkoutId}`);
       await prisma.subscriptionPayment.updateMany({
         where: { checkoutRequestId: checkoutId, status: "pending" },
         data:  { status: "failed", updatedAt: new Date() },
       }).catch(() => null);
-      return Response.json({ status: "failed" });
+      return Response.json({ status: "failed", reason: `Safaricom code ${cb.resultCode}` });
     }
 
-    // ── 3. Query Safaricom directly (may be blocked by Incapsula) ────────────
+    // ── 3. Query Safaricom directly (cap at 6 s so we don't block long) ────────
     try {
-      const result = await querySTK(checkoutId);
+      const result = await Promise.race([
+        querySTK(checkoutId),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("querySTK timeout")), 6_000)
+        ),
+      ]);
 
       if (result.resultCode === 0) {
-        const done = await reconcilePayment(checkoutId);
-        return Response.json({ status: "completed", mpesaRef: done?.mpesaRef ?? undefined });
+        // Give the Safaricom callback ~800 ms to arrive before we reconcile,
+        // so mpesaRef is captured in one shot rather than needing a backfill.
+        await new Promise(r => setTimeout(r, 800));
+        const lateCb = await prisma.mpesaCallback.findUnique({
+          where:  { checkoutRequestId: checkoutId },
+          select: { mpesaReceiptNo: true },
+        }).catch(() => null);
+        const done = await reconcilePayment(checkoutId, lateCb?.mpesaReceiptNo ?? undefined);
+        return Response.json({ status: "completed", mpesaRef: done?.mpesaRef ?? lateCb?.mpesaReceiptNo ?? undefined });
       }
 
       if (result.resultCode !== null && result.resultCode !== 0) {
+        console.log(`[mpesa/status] querySTK failure — code=${result.resultCode} desc="${result.resultDesc}" id=${checkoutId}`);
         await prisma.subscriptionPayment.updateMany({
           where: { checkoutRequestId: checkoutId, status: "pending" },
           data:  { status: "failed", updatedAt: new Date() },
         }).catch(() => null);
         return Response.json({ status: "failed", reason: result.resultDesc });
       }
-    } catch {
+    } catch (qErr) {
+      console.log(`[mpesa/status] querySTK blocked/error — ${qErr instanceof Error ? qErr.message : qErr}`);
       // Incapsula blocked the query — fall through to pending
     }
 

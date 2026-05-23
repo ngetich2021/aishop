@@ -3,8 +3,16 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { chargeShopCreation } from "@/lib/pro-billing";
-import { DAILY_RATE } from "@/lib/billing-constants";
+import { DAILY_RATE, DEMO_SHOP_LIMIT, DEMO_PLUS_SHOP_LIMIT } from "@/lib/billing-constants";
+
+/** Always sets the user's profile role to "owner". Runs outside any transaction. */
+async function promoteToOwner(userId: string) {
+  await prisma.profile.upsert({
+    where:  { userId },
+    update: { role: "owner" },
+    create: { userId, role: "owner", email: null },
+  });
+}
 
 export async function saveShopAction(formData: FormData) {
   const session = await auth();
@@ -36,45 +44,38 @@ export async function saveShopAction(formData: FormData) {
   const role = profile?.role?.toLowerCase().trim() ?? "user";
   const plan = sub?.plan ?? "demo";
 
-  if (shopId && role !== "owner") return { error: "Only owners can manage shops." };
-  if (!shopId && role !== "owner" && role !== "user") return { error: "Only owners can create shops." };
+  const canCreate = role === "owner" || role === "user";
+  if (!shopId && !canCreate) return { error: "Only owners can create shops." };
 
-  // ── 1-shop limit for demo / demo+ ───────────────────────────────────────────
-  if (!shopId && (plan === "demo" || plan === "demo_plus") && existingShopCount >= 1) {
-    return {
-      error: "Demo plans support only 1 shop. Upgrade to Pro at /billing to create multiple shops.",
-    };
+  // ── Shop limits per plan ──────────────────────────────────────────────────
+  if (!shopId) {
+    if (plan === "demo" && existingShopCount >= DEMO_SHOP_LIMIT) {
+      return { error: `Free Demo supports only ${DEMO_SHOP_LIMIT} shop. Upgrade to Demo+ (KES 50) or Pro at /billing.` };
+    }
+    if (plan === "demo_plus" && existingShopCount >= DEMO_PLUS_SHOP_LIMIT) {
+      return { error: `Demo+ supports up to ${DEMO_PLUS_SHOP_LIMIT} shops. Upgrade to Pro at /billing for unlimited shops.` };
+    }
   }
 
   try {
     if (shopId) {
-      // ── Edit existing shop ──────────────────────────────────────────────────
+      // ── Edit existing shop ────────────────────────────────────────────────
       const existing = await prisma.shop.findUnique({ where: { id: shopId }, select: { userId: true } });
       if (!existing) return { error: "Shop not found." };
       if (existing.userId !== userId) return { error: "You can only edit your own shop." };
       await prisma.shop.update({ where: { id: shopId }, data: { name, tel, location } });
+      await promoteToOwner(userId);
       revalidatePath("/welcome");
       return { success: true };
     }
 
     if (plan === "pro" && sub) {
-      // ── Pro: charge KES 5 creation fee, create ShopBilling ─────────────────
-      const fee = await chargeShopCreation(sub.id);
-      if (!fee.ok) return { error: fee.error };
-
+      // ── Pro: no creation fee — shop is billed KES 30/day on first visit ──
       let newShopId = "";
       await prisma.$transaction(async (tx) => {
         const shop = await tx.shop.create({ data: { name, tel, location, userId } });
         newShopId = shop.id;
-
         await tx.wallet.create({ data: { shopId: shop.id, balance: 0 } });
-
-        await tx.profile.upsert({
-          where:  { userId },
-          update: { role: "owner" },
-          create: { userId, role: "owner", email: null },
-        });
-
         await (tx.shopBilling as unknown as {
           create: (args: unknown) => Promise<unknown>
         }).create({
@@ -82,25 +83,18 @@ export async function saveShopAction(formData: FormData) {
         });
       });
 
+      await promoteToOwner(userId);
       revalidatePath("/welcome");
       revalidatePath(`/${newShopId}/shop`);
       return { success: true, shopId: newShopId };
     }
 
-    // ── Demo / Demo+: first shop free — reset demo clock ───────────────────
+    // ── Demo / Demo+: create shop, reset demo clock ───────────────────────
     let newShopId = "";
     await prisma.$transaction(async (tx) => {
       const shop = await tx.shop.create({ data: { name, tel, location, userId } });
       newShopId = shop.id;
-
       await tx.wallet.create({ data: { shopId: shop.id, balance: 0 } });
-
-      await tx.profile.upsert({
-        where:  { userId },
-        update: { role: "owner" },
-        create: { userId, role: "owner", email: null },
-      });
-
       await tx.userSubscription.upsert({
         where:  { userId },
         update: { demoStartedAt: new Date() },
@@ -108,6 +102,7 @@ export async function saveShopAction(formData: FormData) {
       });
     });
 
+    await promoteToOwner(userId);
     revalidatePath("/welcome");
     revalidatePath(`/${newShopId}/shop`);
     return { success: true, shopId: newShopId };
@@ -122,20 +117,10 @@ export async function deleteShopAction(shopId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const userId = session.user.id;
-
-  const profile = await prisma.profile.findUnique({
-    where:  { userId },
-    select: { role: true },
-  });
-  if (profile?.role?.toLowerCase().trim() !== "owner") {
-    throw new Error("Only owners can delete shops.");
-  }
-
   const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { userId: true } });
   if (!shop) throw new Error("Shop not found.");
   if (shop.userId !== userId) throw new Error("You can only delete your own shop.");
 
   await prisma.shop.delete({ where: { id: shopId } });
   revalidatePath("/welcome");
-  revalidatePath(`/${userId}/shop`);
 }

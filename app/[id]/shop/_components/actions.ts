@@ -3,8 +3,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { chargeShopCreation } from "@/lib/pro-billing";
-import { DAILY_RATE } from "@/lib/billing-constants";
+import { DAILY_RATE, DEMO_SHOP_LIMIT, DEMO_PLUS_SHOP_LIMIT } from "@/lib/billing-constants";
 
 function isOwner(role: string) {
   return role.toLowerCase().trim() === "owner";
@@ -58,18 +57,16 @@ export async function saveShopAction(formData: FormData) {
 
     const plan = sub?.plan ?? "demo";
 
-    // ── 1-shop limit for demo / demo+ ──────────────────────────────────────
-    if ((plan === "demo" || plan === "demo_plus") && existingShopCount >= 1) {
-      return {
-        error: "Demo plans support only 1 shop. Upgrade to Pro at /billing to create multiple shops.",
-      };
+    // ── Shop limits by plan ────────────────────────────────────────────────
+    if (plan === "demo" && existingShopCount >= DEMO_SHOP_LIMIT) {
+      return { error: "Free Demo supports 1 shop. Upgrade to Demo+ (2 shops) or Pro (unlimited) at /billing." };
+    }
+    if (plan === "demo_plus" && existingShopCount >= DEMO_PLUS_SHOP_LIMIT) {
+      return { error: "Demo+ supports 2 shops. Upgrade to Pro for unlimited shops at /billing." };
     }
 
-    if (plan === "pro" && sub) {
-      // ── Pro: charge KES 5 creation fee from proBalance ─────────────────────
-      const fee = await chargeShopCreation(sub.id);
-      if (!fee.ok) return { error: fee.error };
-
+    if (plan === "pro") {
+      // No creation fee — shop is billed KES 30 on its first visit of each day
       let newShopId = "";
       await prisma.$transaction(async (tx) => {
         const shop = await tx.shop.create({ data: { name, tel, location, userId } });

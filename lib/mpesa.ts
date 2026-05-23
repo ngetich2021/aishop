@@ -12,14 +12,11 @@ const BASE            = process.env.MPESA_ENV === "production"
   ? "https://api.safaricom.co.ke"
   : "https://sandbox.safaricom.co.ke";
 
-const SHORTCODE       = process.env.MPESA_SHORTCODE!;
+const SHORTCODE       = process.env.MPESA_SHORTCODE!;   // LNMO head-office shortcode (used for auth & password)
+const TILL_NUMBER     = process.env.MPESA_TILL_NUMBER!;  // Buy Goods till (PartyB — where money lands)
 const PASSKEY         = process.env.MPESA_PASSKEY!;
 const CONSUMER_KEY    = process.env.MPESA_CONSUMER_KEY!;
 const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET!;
-
-// Equity Paybill C2B constants
-export const C2B_SHORTCODE   = process.env.MPESA_C2B_SHORTCODE ?? "247247";
-export const C2B_ACCOUNT     = process.env.MPESA_C2B_ACCOUNT   ?? "876954";
 
 // ─── Low-level HTTPS helper ───────────────────────────────────────────────────
 
@@ -99,9 +96,15 @@ export function formatPhone(phone: string): string {
   return digits;
 }
 
-// ─── Token ────────────────────────────────────────────────────────────────────
+// ─── Token (cached for 55 min — Safaricom tokens last 60 min) ────────────────
+
+let _tokenCache: { value: string; expiresAt: number } | null = null;
 
 export async function getMpesaToken(): Promise<string> {
+  if (_tokenCache && Date.now() < _tokenCache.expiresAt) {
+    return _tokenCache.value;
+  }
+
   const credentials = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
 
   const { status, body } = await httpsRequest(
@@ -116,6 +119,8 @@ export async function getMpesaToken(): Promise<string> {
 
   const data = JSON.parse(body) as { access_token?: string };
   if (!data.access_token) throw new Error("M-Pesa: no access_token in response");
+
+  _tokenCache = { value: data.access_token, expiresAt: Date.now() + 55 * 60 * 1000 };
   return data.access_token;
 }
 
@@ -161,10 +166,10 @@ export async function stkPush(opts: StkPushOptions): Promise<StkPushResult> {
     BusinessShortCode: sc,
     Password:          password,
     Timestamp:         timestamp,
-    TransactionType:   "CustomerPayBillOnline",
+    TransactionType:   "CustomerBuyGoodsOnline",
     Amount:            String(Math.round(opts.amount)),
     PartyA:            phone,
-    PartyB:            opts.partyB ?? sc,
+    PartyB:            opts.partyB ?? TILL_NUMBER,
     PhoneNumber:       phone,
     CallBackURL:       callbackUrl,
     AccountReference:  opts.accountRef.slice(0, 12),
@@ -246,13 +251,13 @@ export async function querySTK(checkoutRequestId: string): Promise<StkQueryResul
   };
 
   if (data.errorCode) {
+    console.log(`[mpesa/query] pending — errorCode=${data.errorCode} msg=${data.errorMessage}`);
     return { resultCode: null, resultDesc: data.errorMessage ?? "Pending" };
   }
 
-  return {
-    resultCode: data.ResultCode !== undefined ? Number(data.ResultCode) : null,
-    resultDesc: data.ResultDesc ?? "",
-  };
+  const rc = data.ResultCode !== undefined ? Number(data.ResultCode) : null;
+  console.log(`[mpesa/query] resultCode=${rc} desc=${data.ResultDesc}`);
+  return { resultCode: rc, resultDesc: data.ResultDesc ?? "" };
 }
 
 // ─── C2B URL Registration ─────────────────────────────────────────────────────

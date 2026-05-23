@@ -10,7 +10,7 @@ type SubRow = {
   proBalance:      number;
   proActivatedAt:  Date | null;
   proLastBilledAt: Date | null;
-  payments: Array<{ id: string; amount: number; mpesaRef: string | null; createdAt: Date }>;
+  payments: Array<{ id: string; plan: string; amount: number; mpesaRef: string | null; phone: string | null; checkoutRequestId: string | null; createdAt: Date }>;
 };
 
 export default async function BillingPage() {
@@ -25,7 +25,7 @@ export default async function BillingPage() {
     proBalance:      number;
     proActivatedAt:  string | null;
     proLastBilledAt: string | null;
-    payments: Array<{ id: string; amount: number; mpesaRef: string | null; createdAt: string }>;
+    payments: Array<{ id: string; plan: string; amount: number; mpesaRef: string | null; phone: string | null; createdAt: string }>;
   } | null = null;
 
   let activeShopCount = 0;
@@ -45,10 +45,10 @@ export default async function BillingPage() {
           proActivatedAt:  true,
           proLastBilledAt: true,
           payments: {
-            where:   { plan: "pro", status: "completed" },
+            where:   { status: "completed" },
             orderBy: { createdAt: "desc" },
-            take:    20,
-            select:  { id: true, amount: true, mpesaRef: true, createdAt: true },
+            take:    50,
+            select:  { id: true, plan: true, amount: true, mpesaRef: true, phone: true, checkoutRequestId: true, createdAt: true },
           },
         },
       }),
@@ -65,6 +65,28 @@ export default async function BillingPage() {
 
     activeShopCount = shopCount ?? 0;
 
+    // Backfill mpesaRef for completed payments that are missing it
+    if (sub) {
+      const missing = sub.payments.filter(p => !p.mpesaRef && p.checkoutRequestId);
+      if (missing.length > 0) {
+        await Promise.allSettled(
+          missing.map(async (p) => {
+            const cb = await prisma.mpesaCallback.findUnique({
+              where:  { checkoutRequestId: p.checkoutRequestId! },
+              select: { mpesaReceiptNo: true },
+            }).catch(() => null);
+            if (cb?.mpesaReceiptNo) {
+              await prisma.subscriptionPayment.update({
+                where: { id: p.id },
+                data:  { mpesaRef: cb.mpesaReceiptNo },
+              }).catch(() => null);
+              p.mpesaRef = cb.mpesaReceiptNo;
+            }
+          })
+        );
+      }
+    }
+
     if (sub) {
       subscription = {
         plan:            sub.plan,
@@ -74,7 +96,7 @@ export default async function BillingPage() {
         proBalance:      sub.proBalance ?? 0,
         proActivatedAt:  sub.proActivatedAt?.toISOString() ?? null,
         proLastBilledAt: sub.proLastBilledAt?.toISOString() ?? null,
-        payments:        sub.payments.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+        payments:        sub.payments.map(({ checkoutRequestId: _cid, createdAt, ...p }) => ({ ...p, createdAt: createdAt.toISOString() })),
       };
     }
   }

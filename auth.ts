@@ -112,7 +112,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       // ── First sign-in: embed profile + subscription data into the token ──
       if (user?.id) {
         token["uid"] = user.id;
-        const [profile, subscription] = await Promise.all([
+        const [profile, subscription, shopCount] = await Promise.all([
           prisma.profile.findUnique({
             where:  { userId: user.id },
             select: { role: true, allowedRoutes: true },
@@ -121,8 +121,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             where:  { userId: user.id },
             select: { plan: true, demoStartedAt: true, expiresAt: true, status: true },
           }),
+          prisma.shop.count({ where: { userId: user.id } }),
         ]);
-        token["role"]          = (profile?.role ?? "user").toLowerCase().trim();
+
+        let role = (profile?.role ?? "user").toLowerCase().trim();
+
+        // Auto-promote to owner if they have shops but role is still "user"
+        if (role === "user" && shopCount > 0) {
+          await prisma.profile.update({ where: { userId: user.id }, data: { role: "owner" } });
+          role = "owner";
+        }
+
+        token["role"]          = role;
         token["allowedRoutes"] = (profile?.allowedRoutes ?? []) as string[];
 
         // Ensure subscription exists (might not if createUser event hasn't fired yet)
@@ -155,7 +165,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (trigger === "update") {
         const uid = (token["uid"] ?? token.sub) as string | undefined;
         if (uid) {
-          const [profile, subscription] = await Promise.all([
+          const [profile, subscription, shopCount] = await Promise.all([
             prisma.profile.findUnique({
               where:  { userId: uid },
               select: { role: true, allowedRoutes: true },
@@ -164,9 +174,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
               where:  { userId: uid },
               select: { plan: true, demoStartedAt: true, expiresAt: true, status: true },
             }),
+            prisma.shop.count({ where: { userId: uid } }),
           ]);
           if (profile) {
-            token["role"]          = profile.role.toLowerCase().trim();
+            let role = profile.role.toLowerCase().trim();
+            // Auto-promote to owner if they have shops but role is still "user"
+            if (role === "user" && shopCount > 0) {
+              await prisma.profile.update({ where: { userId: uid }, data: { role: "owner" } });
+              role = "owner";
+            }
+            token["role"]          = role;
             token["allowedRoutes"] = (profile.allowedRoutes ?? []) as string[];
           }
           if (subscription) {

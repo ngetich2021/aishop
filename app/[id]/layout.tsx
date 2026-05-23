@@ -10,6 +10,8 @@ import { PlanProvider }   from "@/components/PlanProvider";
 import SessionSync        from "@/components/SessionSync";
 import { ReactNode }      from "react";
 import prisma             from "@/lib/prisma";
+import { billShopForDay } from "@/lib/pro-billing";
+import { DEMO_SHOP_LIMIT, DEMO_PLUS_SHOP_LIMIT } from "@/lib/billing-constants";
 
 interface Props {
   children: ReactNode;
@@ -24,14 +26,28 @@ export default async function ShopLayout({ children, params }: Props) {
 
   const userName = session.user.name ?? session.user.email ?? "there";
 
-  // ── Always read role + allowedRoutes fresh from DB ───────────────────────
-  // JWT can be stale (e.g. just promoted from user→owner after shop creation).
+  // ── Role + allowedRoutes from DB ─────────────────────────────────────────
   const dbProfile = await prisma.profile.findUnique({
     where:  { userId: session.user.id },
     select: { role: true, allowedRoutes: true },
   });
-  const role          = (dbProfile?.role ?? "user").toLowerCase().trim();
+  let role            = (dbProfile?.role ?? "user").toLowerCase().trim();
   const allowedRoutes = (dbProfile?.allowedRoutes ?? []) as string[];
+
+  // Auto-promote: if they're entering THEIR OWN shop but role is still "user"
+  if (role === "user") {
+    const ownsShop = await prisma.shop.findFirst({
+      where:  { id: shopId, userId: session.user.id },
+      select: { id: true },
+    });
+    if (ownsShop) {
+      await prisma.profile.update({
+        where: { userId: session.user.id },
+        data:  { role: "owner" },
+      });
+      role = "owner";
+    }
+  }
 
   // ── Route access enforcement ──────────────────────────────────────────────
   const reqHeaders = await headers();
@@ -41,54 +57,87 @@ export default async function ShopLayout({ children, params }: Props) {
 
   if (!isRouteAllowed(section, role, allowedRoutes)) {
     const first = allowedRoutes[0];
-    // Redirect within the shop — never back to /welcome (causes loops for staff)
     redirect(first ? `/${shopId}${first}` : `/${shopId}/dashboard`);
   }
 
-  // ── Plan: read live from DB for everyone ─────────────────────────────────
-  // Owner: from their own subscription. Staff/manager: from the shop owner's sub.
-  let plan       = "demo";
-  let planExpiry: string | undefined;
-  let shopName   = "";
-
+  // ── Shop + owner subscription ─────────────────────────────────────────────
   const shop = await prisma.shop.findUnique({
     where:  { id: shopId },
     select: {
-      name: true,
-      user: { select: { subscription: { select: { plan: true, expiresAt: true } } } },
+      name:   true,
+      userId: true,
+      user: {
+        select: {
+          subscription: { select: { plan: true, expiresAt: true } },
+        },
+      },
     },
   });
-  shopName   = shop?.name ?? "";
-  const sub  = shop?.user?.subscription;
-  if (sub) {
-    plan       = sub.plan;
-    planExpiry = sub.expiresAt?.toISOString() ?? undefined;
-  }
 
-  // demo = free tier (always active, shows upgrade banner)
-  // demo_plus = paid extended demo (active while not expired)
-  // pro = fully paid (always active)
-  const active =
+  const shopName  = shop?.name ?? "";
+  const ownerId   = shop?.userId ?? "";
+  const sub       = shop?.user?.subscription;
+  const plan      = sub?.plan ?? "demo";
+  const planExpiry = sub?.expiresAt?.toISOString() ?? undefined;
+
+  // ── Global plan activity ──────────────────────────────────────────────────
+  const globallyActive =
     plan === "pro" ||
     plan === "demo" ||
     (plan === "demo_plus" && !!planExpiry && new Date(planExpiry) > new Date());
 
-  // ── Owners always have full access — no billing gate ────────────────────
-  // Staff/manager with an inactive owner plan → suspended page
-  if (!active && (role === "staff" || role === "manager")) {
-    const reason: "demo" | "expired" = plan === "demo_plus" ? "expired" : "demo";
+  // Staff/manager blocked when plan is globally inactive
+  if (!globallyActive && (role === "staff" || role === "manager")) {
     return (
       <SuspendedPage
-        shopName={shopName}
-        userName={userName}
-        reason={reason}
+        shopName={shopName} userName={userName}
+        reason={plan === "demo_plus" ? "expired" : "demo"}
       />
     );
   }
 
-  // ── Mirror PlanBanner visibility for CSS variable ─────────────────────────
-  const planExpired  = plan === "demo_plus" && !!planExpiry && Date.now() > new Date(planExpiry).getTime();
-  const bannerShown  = plan === "demo" || planExpired;
+  // ── Per-shop access gate ──────────────────────────────────────────────────
+
+  if ((plan === "demo" || plan === "demo_plus") && globallyActive) {
+    // Determine which shops this plan allows (first N by creation date)
+    const limit = plan === "demo" ? DEMO_SHOP_LIMIT : DEMO_PLUS_SHOP_LIMIT;
+    const allowedShops = await prisma.shop.findMany({
+      where:   { userId: ownerId },
+      orderBy: { createdAt: "asc" },
+      select:  { id: true },
+      take:    limit,
+    });
+    const isAllowed = allowedShops.some(s => s.id === shopId);
+
+    if (!isAllowed) {
+      return (
+        <SuspendedPage
+          shopName={shopName} userName={userName}
+          reason="demo_limit"
+          plan={plan}
+          isOwner={role === "owner"}
+        />
+      );
+    }
+  }
+
+  if (plan === "pro") {
+    const bill = await billShopForDay(shopId, ownerId);
+    if (!bill.ok) {
+      return (
+        <SuspendedPage
+          shopName={shopName} userName={userName}
+          reason="unpaid"
+          isOwner={role === "owner"}
+          error={bill.error}
+        />
+      );
+    }
+  }
+
+  // ── Render layout ─────────────────────────────────────────────────────────
+  const planExpired = plan === "demo_plus" && !!planExpiry && Date.now() > new Date(planExpiry).getTime();
+  const bannerShown = plan === "demo" || planExpired;
 
   return (
     <div className="min-h-screen bg-gray-50">

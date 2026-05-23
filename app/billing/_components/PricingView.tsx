@@ -12,9 +12,11 @@ import Link from "next/link";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Payment {
-  id:       string;
-  amount:   number;
-  mpesaRef: string | null;
+  id:        string;
+  plan:      string;
+  amount:    number;
+  mpesaRef:  string | null;
+  phone:     string | null;
   createdAt: string;
 }
 
@@ -38,10 +40,11 @@ interface Props {
 type PollStatus = "idle" | "polling" | "timedout" | "verifying" | "completed" | "failed";
 
 const DEMO_LIMIT_MS  = 5 * 60 * 60 * 1000;
-const POLL_TIMEOUT_S = 90;
-const SHOP_CREATION_FEE = 5;
-const DAILY_RATE        = 30;
-const LOW_BALANCE_DAYS  = 5;
+const POLL_TIMEOUT_S = 120;
+const DEMO_PLUS_FEE  = 50;
+const PRO_MIN_TOPUP  = 100;
+const DAILY_RATE     = 30;
+const LOW_BALANCE_DAYS = 5;
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-KE", {
@@ -78,47 +81,51 @@ function PaymentForm({
   const [error,          setError]          = useState<string | null>(null);
   const [pollStatus,     setPollStatus]     = useState<PollStatus>("idle");
   const [mpesaRef,       setMpesaRef]       = useState<string | null>(null);
-  const [elapsed,        setElapsed]        = useState(0);
+  const [failReason,     setFailReason]     = useState<string | null>(null);
   const [receiptCode,    setReceiptCode]    = useState("");
   const [verifyLoading,  setVerifyLoading]  = useState(false);
   const [verifyError,    setVerifyError]    = useState<string | null>(null);
-  const checkoutIdRef = useRef<string | null>(null);
-  const pollRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsedRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const checkoutIdRef  = useRef<string | null>(null);
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successCalled  = useRef(false);
 
   function stopAll() {
-    if (pollRef.current)    clearInterval(pollRef.current);
-    if (elapsedRef.current) clearInterval(elapsedRef.current);
-    pollRef.current = elapsedRef.current = null;
+    if (pollRef.current)   clearInterval(pollRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    pollRef.current = timeoutRef.current = null;
   }
 
   useEffect(() => () => stopAll(), []);
 
   function startPolling(cid: string) {
     checkoutIdRef.current = cid;
+    successCalled.current = false;
     setPollStatus("polling");
-    setElapsed(0);
 
-    elapsedRef.current = setInterval(() => {
-      setElapsed(s => {
-        const next = s + 1;
-        if (next >= POLL_TIMEOUT_S) { stopAll(); setPollStatus("timedout"); }
-        return next;
-      });
-    }, 1000);
+    timeoutRef.current = setTimeout(() => {
+      stopAll();
+      setPollStatus("timedout");
+    }, POLL_TIMEOUT_S * 1000);
 
-    pollRef.current = setInterval(async () => {
+    async function doPoll() {
       try {
         const res  = await fetch(`/api/mpesa/status/${cid}`);
-        const data = (await res.json()) as { status: string; mpesaRef?: string };
+        const data = (await res.json()) as { status: string; mpesaRef?: string; reason?: string };
         if (data.status === "completed") {
+          if (successCalled.current) return;
+          successCalled.current = true;
           stopAll(); setMpesaRef(data.mpesaRef ?? null); setPollStatus("completed");
           await onSuccess();
         } else if (data.status === "failed") {
-          stopAll(); setPollStatus("failed");
+          stopAll(); setFailReason(data.reason ?? null); setPollStatus("failed");
         }
       } catch { /* keep polling */ }
-    }, 3000);
+    }
+
+    // Poll immediately, then every 2 s
+    doPoll();
+    pollRef.current = setInterval(doPoll, 2000);
   }
 
   async function handleSubmit(e: React.SyntheticEvent) {
@@ -154,17 +161,11 @@ function PaymentForm({
   }
 
   if (pollStatus === "polling") {
-    const hint = elapsed < 15 ? "Check your phone and enter your M-Pesa PIN…"
-      : elapsed < 45 ? "Waiting for confirmation…"
-      : "Still waiting — tap the M-Pesa prompt if it's still on your phone.";
     return (
       <div className="mt-4 space-y-3 text-center">
-        <Loader2 size={28} className="mx-auto animate-spin text-orange-500" />
-        <p className="text-sm font-semibold text-gray-700">{hint}</p>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${(elapsed / POLL_TIMEOUT_S) * 100}%` }} />
-        </div>
-        <p className="text-xs text-gray-400">{elapsed}s / {POLL_TIMEOUT_S}s</p>
+        <Loader2 size={32} className="mx-auto animate-spin text-orange-500" />
+        <p className="text-sm font-semibold text-gray-700">Check your phone and enter your M-Pesa PIN…</p>
+        <p className="text-xs text-gray-400">Waiting for confirmation from Safaricom</p>
         <button onClick={() => { stopAll(); setPollStatus("timedout"); }} className="text-xs text-gray-400 hover:text-gray-600 underline">
           I already paid — enter receipt code
         </button>
@@ -214,9 +215,12 @@ function PaymentForm({
       <div className="mt-4 space-y-2">
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700">
           <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-          <p>Payment was cancelled or failed. No charge was made.</p>
+          <div>
+            <p className="font-semibold">Payment was cancelled or failed. No charge was made.</p>
+            {failReason && <p className="mt-0.5 text-red-500 font-mono">{failReason}</p>}
+          </div>
         </div>
-        <button onClick={() => setPollStatus("idle")}
+        <button onClick={() => { setPollStatus("idle"); setFailReason(null); }}
           className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-orange-600 hover:underline py-1">
           <RotateCcw size={12} /> Try again
         </button>
@@ -232,8 +236,8 @@ function PaymentForm({
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
             Amount (KES)
           </label>
-          <input type="number" required min={35} step={1} value={amount} onChange={e => setAmount(e.target.value)}
-            placeholder={`Min KES 35 (KES 5 + 1 day)`}
+          <input type="number" required min={PRO_MIN_TOPUP} step={1} value={amount} onChange={e => setAmount(e.target.value)}
+            placeholder={`Min KES ${PRO_MIN_TOPUP}`}
             className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition" />
         </div>
       )}
@@ -251,9 +255,76 @@ function PaymentForm({
           : <>{amountHint ?? `Pay via M-Pesa`} <ArrowRight size={15} /></>}
       </button>
       <p className="text-center text-xs text-gray-400">
-        {plan === "pro" ? `Any amount — KES ${SHOP_CREATION_FEE}/shop + KES ${DAILY_RATE}/day` : "One-time payment"}
+        {plan === "pro" ? `Min KES ${PRO_MIN_TOPUP} — KES ${DAILY_RATE}/shop/day, no creation fee` : "One-time payment · 2 shops · 24 hours"}
       </p>
     </form>
+  );
+}
+
+// ─── Transaction History ──────────────────────────────────────────────────────
+
+const PLAN_LABELS: Record<string, string> = {
+  pro:       "Pro Top-up",
+  demo_plus: "Demo+",
+  demo:      "Demo",
+};
+
+function TransactionHistory({ payments }: { payments: Payment[] }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+        <History size={16} className="text-gray-500" />
+        <p className="font-black text-sm text-gray-900">Transaction History</p>
+        <span className="ml-auto text-xs text-gray-400">
+          {payments.length} payment{payments.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+      {payments.length === 0 ? (
+        <div className="px-5 py-8 text-center text-xs text-gray-400">No payments yet.</div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {payments.map((p, i) => (
+            <div key={p.id} className="flex items-center gap-4 px-5 py-3.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                p.plan === "pro" ? "bg-orange-50" : "bg-blue-50"
+              }`}>
+                <Wallet size={14} className={p.plan === "pro" ? "text-orange-600" : "text-blue-600"} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-bold text-gray-900">KES {p.amount.toLocaleString()}</p>
+                  <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${
+                    p.plan === "pro" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {PLAN_LABELS[p.plan] ?? p.plan}
+                  </span>
+                  {i === 0 && (
+                    <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Latest</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">{fmtDateTime(p.createdAt)}</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {p.phone && (
+                    <span className="text-xs font-mono text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                      📱 {p.phone}
+                    </span>
+                  )}
+                  {p.mpesaRef ? (
+                    <span className="text-xs font-mono text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg font-bold">
+                      M-Pesa: {p.mpesaRef}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                      Receipt pending — refresh to update
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -271,7 +342,7 @@ function ProDashboard({
 
   const balance       = subscription.proBalance ?? 0;
   const shopCount     = activeShopCount > 0 ? activeShopCount : 1;
-  const effectiveRate = DAILY_RATE * shopCount;
+  const effectiveRate = DAILY_RATE * Math.max(1, shopCount);
   const daysLeft      = Math.floor(balance / effectiveRate);
   const isLow         = daysLeft <= LOW_BALANCE_DAYS;
   const isSuspended = subscription.status === "suspended";
@@ -318,7 +389,7 @@ function ProDashboard({
             <p className="text-5xl font-black mt-1">KES {balance.toLocaleString()}</p>
             <p className="text-sm text-orange-100 mt-1 flex items-center gap-1.5">
               <TrendingDown size={13} />
-              KES {effectiveRate}/day ({shopCount} shop{shopCount !== 1 ? "s" : ""} × KES {DAILY_RATE})
+              KES {DAILY_RATE}/day per shop · {shopCount} active shop{shopCount !== 1 ? "s" : ""}
             </p>
           </div>
           <div className="text-right">
@@ -379,7 +450,7 @@ function ProDashboard({
         <div className="grid grid-cols-2 gap-3">
           {[
             { label: "Current balance", value: `KES ${balance.toLocaleString()}` },
-            { label: "Daily deduction", value: `KES ${effectiveRate} (${shopCount} shop${shopCount !== 1 ? "s" : ""})` },
+            { label: "Daily per shop",  value: `KES ${DAILY_RATE} × ${shopCount} shop${shopCount !== 1 ? "s" : ""} = KES ${effectiveRate}` },
             { label: "Days covered",    value: `${daysLeft} day${daysLeft !== 1 ? "s" : ""}` },
             { label: "Last billed",     value: subscription.proLastBilledAt ? fmtDate(subscription.proLastBilledAt) : "Not yet" },
           ].map(({ label, value }) => (
@@ -411,44 +482,17 @@ function ProDashboard({
             <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mt-4 text-xs text-orange-800 space-y-1">
               <p className="font-bold">How top-ups work:</p>
               <p>• Full amount is credited to your balance instantly.</p>
-              <p>• Each new shop costs KES {SHOP_CREATION_FEE} (one-time creation fee).</p>
-              <p>• KES {DAILY_RATE}/day per shop is deducted automatically.</p>
-              <p>• Example: 2 shops = KES {DAILY_RATE * 2}/day — KES 600 lasts ~10 days.</p>
+              <p>• No shop creation fee — just KES {DAILY_RATE}/day per shop.</p>
+              <p>• Each shop is billed KES {DAILY_RATE} on its first visit of the day.</p>
+              <p>• Example: 3 shops visited today = KES {DAILY_RATE * 3} deducted.</p>
+              <p>• Shops not visited that day are not charged.</p>
             </div>
             <PaymentForm plan="pro" userId={userId} onSuccess={handleTopUpSuccess} amountHint="Top up via M-Pesa" />
           </div>
         )}
       </div>
 
-      {/* Payment history */}
-      {subscription.payments.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-            <History size={16} className="text-gray-500" />
-            <p className="font-black text-sm text-gray-900">Top-up History</p>
-            <span className="ml-auto text-xs text-gray-400">{subscription.payments.length} payment{subscription.payments.length !== 1 ? "s" : ""}</span>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {subscription.payments.map((p, i) => (
-              <div key={p.id} className="flex items-center gap-4 px-5 py-3.5">
-                <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
-                  <Wallet size={14} className="text-emerald-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900">KES {p.amount.toLocaleString()} deposited</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{fmtDateTime(p.createdAt)}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  {p.mpesaRef && (
-                    <p className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded-lg">{p.mpesaRef}</p>
-                  )}
-                  {i === 0 && <span className="text-xs text-emerald-600 font-bold">Latest</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <TransactionHistory payments={subscription.payments} />
 
     </div>
   );
@@ -527,11 +571,14 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
   const [recoverError,   setRecoverError]   = useState<string | null>(null);
   const [recoverDone,    setRecoverDone]    = useState(false);
 
+  const [justPaid, setJustPaid] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setPaused(params.has("paused"));
     setExpired(params.has("expired"));
     setReturnTo(params.get("returnTo"));
+    setJustPaid(params.has("paid"));
   }, []);
 
   const currentPlan     = subscription?.plan ?? "demo";
@@ -551,9 +598,7 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
 
   async function handlePaymentSuccess() {
     await update();
-    const params = new URLSearchParams(window.location.search);
-    const rt     = params.get("returnTo") ?? "/welcome";
-    window.location.href = rt;
+    window.location.href = "/billing?paid=1";
   }
 
   async function handleProTopUpSuccess() {
@@ -580,6 +625,21 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-orange-50 px-4 py-12">
       <div className="max-w-5xl mx-auto space-y-10">
+
+        {/* Just-paid success banner */}
+        {justPaid && (
+          <div className="flex items-center gap-4 bg-emerald-600 text-white rounded-2xl px-5 py-4 shadow-md">
+            <CheckCircle2 size={22} className="shrink-0" />
+            <div className="flex-1">
+              <p className="font-black text-sm">Payment successful — your plan is now active.</p>
+              <p className="text-xs text-emerald-100 mt-0.5">Your transaction is recorded below.</p>
+            </div>
+            <Link href="/welcome"
+              className="shrink-0 flex items-center gap-2 bg-white text-emerald-700 hover:bg-emerald-50 font-black text-sm px-5 py-2.5 rounded-xl transition">
+              Go to App <ArrowRight size={15} />
+            </Link>
+          </div>
+        )}
 
         {/* Active plan banner */}
         {planIsActive && !paused && !expired && !isPro && (
@@ -718,11 +778,16 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
 
             {/* Demo+ */}
             <PlanCard
-              title="Demo+" price="KES 2" description="Full access for 24 hours"
+              title="Demo+" price="KES 50" description="2 shops · full access · 24 hours"
               icon={<Zap size={22} className="text-blue-600" />} accentColor="bg-blue-50"
               isCurrent={currentPlan === "demo_plus"} isExpiredPlan={demoPlusExpired} badge="Popular"
-              features={["Full app access","Create shops & products","Record sales & expenses","24-hour access window","One-time M-Pesa payment"]}
-              note="All shop data is cleared on re-subscription. Upgrade to Pro to keep your data permanently."
+              features={[
+                "Access up to 2 shops for 24 hours",
+                "Full app — sales, expenses, products",
+                "One-time KES 50 M-Pesa payment",
+                "Re-subscribe anytime for a new 24-hour window",
+              ]}
+              note="Shop data is cleared on re-subscription. Upgrade to Pro to keep data permanently."
               paymentForm={
                 (currentPlan !== "demo_plus" || demoPlusExpired) && userId ? (
                   <>
@@ -731,7 +796,7 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
                         Expired: {fmtDate(subscription.expiresAt)}. Re-subscribe for a fresh 24-hour window.
                       </div>
                     )}
-                    <PaymentForm plan="demo_plus" userId={userId} onSuccess={handlePaymentSuccess} amountHint="Pay KES 2 via M-Pesa" />
+                    <PaymentForm plan="demo_plus" userId={userId} onSuccess={handlePaymentSuccess} amountHint={`Pay KES ${DEMO_PLUS_FEE} via M-Pesa`} />
                   </>
                 ) : currentPlan === "demo_plus" && !demoPlusExpired && subscription?.expiresAt ? (
                   <div className="mt-4 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
@@ -743,18 +808,18 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
 
             {/* Pro */}
             <PlanCard
-              title="Pro" price="KES 5/shop" description="Pay-as-you-go, unlimited shops"
+              title="Pro" price={`KES ${DAILY_RATE}/shop/day`} description="Unlimited shops · pay as you go"
               icon={<Crown size={22} className="text-orange-600" />} accentColor="bg-orange-50"
               isCurrent={isPro} badge="Best Value"
               features={[
-                `KES ${SHOP_CREATION_FEE} per shop (one-time creation fee)`,
-                `KES ${DAILY_RATE}/day per shop from your deposited balance`,
-                "Create unlimited shops",
-                "Top up any amount via M-Pesa",
-                "Full app access — no expiry",
-                "Invite unlimited staff",
+                `No shop creation fee`,
+                `KES ${DAILY_RATE}/day per shop — billed on first visit of the day`,
+                "Shops not visited that day are not charged",
+                `Top up any amount (min KES ${PRO_MIN_TOPUP}) via M-Pesa`,
+                "Unlimited shops · full app access · no expiry",
+                "Invite unlimited staff per shop",
               ]}
-              note={`Deposit any amount. Each shop costs KES ${SHOP_CREATION_FEE} to create, then KES ${DAILY_RATE}/day. 3 shops = KES ${DAILY_RATE * 3}/day.`}
+              note={`Deposit KES ${PRO_MIN_TOPUP}+. Each shop you visit costs KES ${DAILY_RATE} that day. 3 shops visited = KES ${DAILY_RATE * 3}/day.`}
               paymentForm={
                 !isPro && userId ? (
                   <PaymentForm plan="pro" userId={userId} onSuccess={handlePaymentSuccess} amountHint="Activate Pro via M-Pesa" />
@@ -773,13 +838,18 @@ export default function PricingView({ userId, subscription, activeShopCount }: P
           </div>
         )}
 
+        {/* Transaction history for all non-Pro users */}
+        {!isPro && subscription && (
+          <TransactionHistory payments={subscription.payments} />
+        )}
+
         {/* FAQ */}
         {!isPro && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             {[
-              { q: "What can I do on the free demo?", a: "Full access to all features for 5 hours — create shops, add products, record sales, and more. No payment needed." },
-              { q: "What happens after Demo+ expires?", a: "All data is deleted after 24 hours. Upgrade to Pro to retain your data permanently." },
-              { q: "How does Pro billing work?", a: `Deposit any amount via M-Pesa. Each shop costs KES ${SHOP_CREATION_FEE} to create, then KES ${DAILY_RATE}/day per shop is deducted from your balance automatically.` },
+              { q: "What can I do on the free demo?", a: "Full access to all features for 5 hours with 1 shop — create products, record sales, and more. No payment needed." },
+              { q: "What does Demo+ give me?", a: `KES ${DEMO_PLUS_FEE} unlocks 2 shops for 24 hours. Data is cleared on re-subscription. Upgrade to Pro to keep data permanently.` },
+              { q: "How does Pro billing work?", a: `Top up any amount (min KES ${PRO_MIN_TOPUP}). No creation fee — each shop you visit costs KES ${DAILY_RATE} for that day. Shops not visited aren't charged.` },
             ].map((item, i) => (
               <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
                 <p className="font-black text-gray-900 mb-1.5">{item.q}</p>

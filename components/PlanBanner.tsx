@@ -23,7 +23,7 @@ export default function PlanBanner({ plan, planExpiry }: Props) {
   const message =
     isExpired
       ? "Your Demo+ plan has expired. Renew at /billing to resume data entry."
-      : "Free Demo — full view access, no data entry. Upgrade to Demo+ (KES 2/24 h) or Pro to start adding records.";
+      : "Free Demo — full view access, no data entry. Upgrade to Demo+ (KES 50/24 h) or Pro to start adding records.";
 
   const urgent = plan === "demo" || isExpired;
 

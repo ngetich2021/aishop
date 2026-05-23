@@ -10,9 +10,10 @@
  */
 import { NextRequest }            from "next/server";
 import prisma                     from "@/lib/prisma";
-import { stkPush, formatPhone, C2B_SHORTCODE, C2B_ACCOUNT } from "@/lib/mpesa";
+import { stkPush, formatPhone } from "@/lib/mpesa";
 
-const MIN_PRO_AMOUNT = 35; // KES 5 (shop creation) + KES 30 (1 day) minimum
+const DEMO_PLUS_AMOUNT = 50;   // KES fixed for Demo+
+const MIN_PRO_AMOUNT   = 100;  // KES minimum Pro top-up
 
 export async function POST(req: NextRequest) {
   let body: { phone?: string; plan?: string; userId?: string; amount?: number };
@@ -40,13 +41,13 @@ export async function POST(req: NextRequest) {
   // Determine amount
   let amount: number;
   if (plan === "demo_plus") {
-    amount = 2;
+    amount = DEMO_PLUS_AMOUNT;
   } else {
     amount = Math.round(Number(body.amount ?? 0));
     if (amount < MIN_PRO_AMOUNT) {
       return Response.json({
         success: false,
-        message: `Minimum top-up is KES ${MIN_PRO_AMOUNT} (KES 5 shop creation + KES 30 for 1 day).`,
+        message: `Minimum top-up is KES ${MIN_PRO_AMOUNT}.`,
       }, { status: 400 });
     }
   }
@@ -71,19 +72,11 @@ export async function POST(req: NextRequest) {
       data: { subscriptionId: subscription.id, plan, amount, phone: formattedPhone, status: "pending" },
     });
 
-    // STK Push
-    // Pro plan → Equity Paybill 247247, account 876954
-    // Demo+ → default shortcode
-    // All plans route to Equity Paybill 247247 / account 876954
-    const c2bPassKey = process.env.MPESA_C2B_PASSKEY ?? process.env.MPESA_PASSKEY!;
     const stkOpts = {
       phone,
       amount,
-      accountRef:  C2B_ACCOUNT,
-      description: plan === "pro" ? "Pro Top-up" : "Demo+ Plan",
-      shortCode:   C2B_SHORTCODE,
-      partyB:      C2B_SHORTCODE,
-      passKey:     c2bPassKey,
+      accountRef:  plan === "pro" ? "ProTopUp" : "DemoPlus",
+      description: plan === "pro" ? "Pro Top-up" : "Demo+ 50",
     };
 
     const stkResult = await stkPush(stkOpts);
@@ -99,8 +92,8 @@ export async function POST(req: NextRequest) {
       message:           stkResult.customerMessage || "Check your phone and enter your M-Pesa PIN",
     });
   } catch (err: unknown) {
-    console.error("[mpesa/stk] error:", err);
     const message = err instanceof Error ? err.message : "Failed to initiate payment";
+    console.error("[mpesa/stk]", message);
     return Response.json({ success: false, message }, { status: 500 });
   }
 }
