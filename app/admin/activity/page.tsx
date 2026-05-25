@@ -7,14 +7,14 @@ export default async function AdminActivityPage() {
   const [loginLogs, activityLogs] = await Promise.all([
     prisma.loginLog.findMany({
       orderBy: { loginTime: "desc" },
-      take:    100,
+      take:    500,
       include: {
         user: { select: { name: true, email: true, image: true } },
       },
     }),
     prisma.activityLog.findMany({
       orderBy: { createdAt: "desc" },
-      take:    100,
+      take:    500,
       include: {
         user: { select: { name: true, email: true, image: true } },
       },

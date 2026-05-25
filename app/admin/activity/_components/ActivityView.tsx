@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image        from "next/image";
-import { Activity, LogIn, Clock, User } from "lucide-react";
+import { Activity, LogIn, Clock } from "lucide-react";
+import Pagination from "@/app/admin/_components/Pagination";
+
+const PER_PAGE = 25;
 
 interface LoginLog {
   id:         string;
@@ -93,7 +96,21 @@ function Avatar({ image, name }: { image: string | null; name: string }) {
 }
 
 export default function ActivityView({ loginLogs, activityLogs }: Props) {
-  const [tab, setTab] = useState<Tab>("login");
+  const [tab,          setTab]          = useState<Tab>("login");
+  const [loginPage,    setLoginPage]    = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+
+  // Reset pages on tab change
+  useEffect(() => { setLoginPage(1); setActivityPage(1); }, [tab]);
+
+  const paginatedLogin    = useMemo(
+    () => loginLogs.slice((loginPage - 1) * PER_PAGE, loginPage * PER_PAGE),
+    [loginLogs, loginPage]
+  );
+  const paginatedActivity = useMemo(
+    () => activityLogs.slice((activityPage - 1) * PER_PAGE, activityPage * PER_PAGE),
+    [activityLogs, activityPage]
+  );
 
   return (
     <div className="space-y-5">
@@ -143,7 +160,7 @@ export default function ActivityView({ loginLogs, activityLogs }: Props) {
                     <td colSpan={5} className="text-center py-10 text-gray-400 text-sm">No login records</td>
                   </tr>
                 )}
-                {loginLogs.map(l => (
+                {paginatedLogin.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -175,6 +192,14 @@ export default function ActivityView({ loginLogs, activityLogs }: Props) {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={loginPage}
+            totalPages={Math.ceil(loginLogs.length / PER_PAGE)}
+            total={loginLogs.length}
+            perPage={PER_PAGE}
+            label="sessions"
+            onPage={setLoginPage}
+          />
         </div>
       )}
 
@@ -199,7 +224,7 @@ export default function ActivityView({ loginLogs, activityLogs }: Props) {
                     <td colSpan={6} className="text-center py-10 text-gray-400 text-sm">No activity records</td>
                   </tr>
                 )}
-                {activityLogs.map(l => (
+                {paginatedActivity.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -224,6 +249,14 @@ export default function ActivityView({ loginLogs, activityLogs }: Props) {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={activityPage}
+            totalPages={Math.ceil(activityLogs.length / PER_PAGE)}
+            total={activityLogs.length}
+            perPage={PER_PAGE}
+            label="actions"
+            onPage={setActivityPage}
+          />
         </div>
       )}
     </div>

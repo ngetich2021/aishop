@@ -8,8 +8,8 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { signOut } from "next-auth/react";
 import { AlertTriangle, X } from "lucide-react";
 
-const IDLE_MS    = 3 * 60 * 1000;  // 3 minutes
-const WARN_MS    = 30 * 1000;       // warn 30 s before sign-out
+const IDLE_MS    = 10 * 60 * 1000; // 10 minutes
+const WARN_MS    = 60 * 1000;       // warn 60 s before sign-out
 const EVENTS     = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"] as const;
 
 export default function IdleTimer() {
@@ -27,8 +27,8 @@ export default function IdleTimer() {
   }, []);
 
   const startCountdown = useCallback(() => {
-    secsRef.current = 30;
-    setSecs(30);
+    secsRef.current = 60;
+    setSecs(60);
     countRef.current = setInterval(() => {
       secsRef.current -= 1;
       setSecs(secsRef.current);

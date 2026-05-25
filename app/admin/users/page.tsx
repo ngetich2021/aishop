@@ -10,7 +10,7 @@ interface Props {
 export default async function AdminUsersPage({ searchParams }: Props) {
   const { page: pageParam } = await searchParams;
   const page  = Math.max(1, parseInt(pageParam ?? "1", 10));
-  const take  = 50;
+  const take  = 20;
   const skip  = (page - 1) * take;
 
   const [users, total] = await Promise.all([

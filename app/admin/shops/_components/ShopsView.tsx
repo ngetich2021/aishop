@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
 import { Search, Store, Package, Users, MoreVertical } from "lucide-react";
 import { suspendShop, unsuspendShop } from "@/app/admin/_actions";
+import Pagination from "@/app/admin/_components/Pagination";
+
+const PER_PAGE = 20;
 
 interface Shop {
   id:            string;
@@ -67,6 +70,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 export default function ShopsView({ shops }: Props) {
   const [search,    setSearch]    = useState("");
   const [filter,    setFilter]    = useState<Filter>("all");
+  const [page,      setPage]      = useState(1);
   const [openMenu,  setOpenMenu]  = useState<string | null>(null);
   const [feedback,  setFeedback]  = useState<{ id: string; ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -89,6 +93,12 @@ export default function ShopsView({ shops }: Props) {
       return matchSearch && matchFilter;
     });
   }, [search, filter, shops]);
+
+  // Reset to page 1 whenever filter or search changes
+  useEffect(() => { setPage(1); }, [filter, search]);
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paginated  = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   function handleSuspend(shopId: string, suspend: boolean) {
     startTransition(async () => {
@@ -173,7 +183,7 @@ export default function ShopsView({ shops }: Props) {
                   </td>
                 </tr>
               )}
-              {filtered.map(s => (
+              {paginated.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
@@ -188,7 +198,7 @@ export default function ShopsView({ shops }: Props) {
                   </td>
                   <td className="px-3 py-3">
                     <p className="text-gray-800 text-xs font-medium">{s.ownerName}</p>
-                    <p className="text-gray-400 text-[0.65rem] truncate max-w-[120px]">{s.ownerEmail}</p>
+                    <p className="text-gray-400 text-[0.65rem] truncate max-w-30">{s.ownerEmail}</p>
                   </td>
                   <td className="px-3 py-3 text-gray-600 text-xs">{s.location}</td>
                   <td className="px-3 py-3"><PlanBadge plan={s.plan} /></td>
@@ -240,11 +250,14 @@ export default function ShopsView({ shops }: Props) {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400">
-            Showing {filtered.length} of {shops.length} shops
-          </p>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={filtered.length}
+          perPage={PER_PAGE}
+          label="shops"
+          onPage={setPage}
+        />
       </div>
 
       {openMenu && (

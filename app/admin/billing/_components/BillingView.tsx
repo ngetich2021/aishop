@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { CreditCard, Store, BarChart3 } from "lucide-react";
+import Pagination from "@/app/admin/_components/Pagination";
+
+const PER_PAGE = 20;
 
 interface SubPayment {
   id:        string;
@@ -90,7 +93,21 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export default function BillingView({ subscriptionPayments, shopBillingLogs, planDist, monthlyRevenue }: Props) {
-  const [tab, setTab] = useState<Tab>("subscriptions");
+  const [tab,     setTab]     = useState<Tab>("subscriptions");
+  const [subPage, setSubPage] = useState(1);
+  const [logPage, setLogPage] = useState(1);
+
+  // Reset pages on tab change
+  useEffect(() => { setSubPage(1); setLogPage(1); }, [tab]);
+
+  const paginatedSubs = useMemo(
+    () => subscriptionPayments.slice((subPage - 1) * PER_PAGE, subPage * PER_PAGE),
+    [subscriptionPayments, subPage]
+  );
+  const paginatedLogs = useMemo(
+    () => shopBillingLogs.slice((logPage - 1) * PER_PAGE, logPage * PER_PAGE),
+    [shopBillingLogs, logPage]
+  );
 
   const totalRevenue = subscriptionPayments
     .filter(p => p.status === "completed")
@@ -152,7 +169,7 @@ export default function BillingView({ subscriptionPayments, shopBillingLogs, pla
                 {subscriptionPayments.length === 0 && (
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">No payments found</td></tr>
                 )}
-                {subscriptionPayments.map(p => (
+                {paginatedSubs.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium text-gray-800 text-xs">{p.userName}</p>
@@ -169,6 +186,14 @@ export default function BillingView({ subscriptionPayments, shopBillingLogs, pla
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={subPage}
+            totalPages={Math.ceil(subscriptionPayments.length / PER_PAGE)}
+            total={subscriptionPayments.length}
+            perPage={PER_PAGE}
+            label="payments"
+            onPage={setSubPage}
+          />
         </div>
       )}
 
@@ -191,7 +216,7 @@ export default function BillingView({ subscriptionPayments, shopBillingLogs, pla
                 {shopBillingLogs.length === 0 && (
                   <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-sm">No billing logs found</td></tr>
                 )}
-                {shopBillingLogs.map(l => (
+                {paginatedLogs.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium text-gray-800 text-xs">{l.shopName}</p>
@@ -206,6 +231,14 @@ export default function BillingView({ subscriptionPayments, shopBillingLogs, pla
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={logPage}
+            totalPages={Math.ceil(shopBillingLogs.length / PER_PAGE)}
+            total={shopBillingLogs.length}
+            perPage={PER_PAGE}
+            label="logs"
+            onPage={setLogPage}
+          />
         </div>
       )}
 

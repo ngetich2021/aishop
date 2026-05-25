@@ -7,11 +7,11 @@ export default async function AdminPaymentsPage() {
   const [mpesaCallbacks, subscriptionPayments] = await Promise.all([
     prisma.mpesaCallback.findMany({
       orderBy: { createdAt: "desc" },
-      take:    100,
+      take:    500,
     }),
     prisma.subscriptionPayment.findMany({
       orderBy: { createdAt: "desc" },
-      take:    100,
+      take:    500,
       include: {
         subscription: {
           include: { user: { select: { name: true, email: true } } },

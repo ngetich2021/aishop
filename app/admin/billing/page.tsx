@@ -24,7 +24,7 @@ export default async function AdminBillingPage() {
   ] = await Promise.all([
     prisma.subscriptionPayment.findMany({
       orderBy: { createdAt: "desc" },
-      take:    100,
+      take:    500,
       include: {
         subscription: {
           include: { user: { select: { name: true, email: true } } },
@@ -33,7 +33,7 @@ export default async function AdminBillingPage() {
     }),
     (prisma.shopBillingLog as any).findMany({
       orderBy: { billedAt: "desc" },
-      take:    50,
+      take:    500,
       include: {
         billing: {
           include: { shop: { select: { name: true } } },

@@ -259,27 +259,51 @@ export default function UsersView({ users, page, total, perPage }: Props) {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
-            <p className="text-xs text-gray-500">
-              Page {page} of {totalPages} &bull; {total} users
-            </p>
-            <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50 flex-wrap gap-2">
+          <p className="text-xs text-gray-500">
+            {total === 0
+              ? "0 users"
+              : `${(page - 1) * perPage + 1}–${Math.min(page * perPage, total)} of ${total.toLocaleString()} users`}
+          </p>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
               <Link
                 href={`/admin/users?page=${page - 1}`}
-                className={`p-1.5 rounded-lg border text-gray-500 transition ${page <= 1 ? "opacity-40 pointer-events-none" : "hover:bg-white hover:border-gray-300"}`}
+                className={`p-1.5 rounded-lg border border-gray-200 text-gray-500 transition ${page <= 1 ? "opacity-40 pointer-events-none" : "hover:bg-white hover:border-gray-300"}`}
               >
-                <ChevronLeft size={15} />
+                <ChevronLeft size={13} />
               </Link>
+              {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                let p: number;
+                if (totalPages <= 7)           p = i + 1;
+                else if (page <= 4)            p = i + 1;
+                else if (page >= totalPages-3) p = totalPages - 6 + i;
+                else                           p = page - 3 + i;
+                if (p < 1 || p > totalPages) return null;
+                return (
+                  <Link
+                    key={p}
+                    href={`/admin/users?page=${p}`}
+                    className={[
+                      "w-7 h-7 flex items-center justify-center rounded-lg text-xs font-medium border transition",
+                      p === page
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "border-gray-200 text-gray-600 hover:bg-white hover:border-gray-300",
+                    ].join(" ")}
+                  >
+                    {p}
+                  </Link>
+                );
+              })}
               <Link
                 href={`/admin/users?page=${page + 1}`}
-                className={`p-1.5 rounded-lg border text-gray-500 transition ${page >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-white hover:border-gray-300"}`}
+                className={`p-1.5 rounded-lg border border-gray-200 text-gray-500 transition ${page >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-white hover:border-gray-300"}`}
               >
-                <ChevronRight size={15} />
+                <ChevronRight size={13} />
               </Link>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modal */}

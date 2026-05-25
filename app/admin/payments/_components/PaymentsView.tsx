@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
 import { Smartphone, CreditCard, CheckCircle } from "lucide-react";
-import { markCallbackProcessed }              from "@/app/admin/_actions";
+import { markCallbackProcessed } from "@/app/admin/_actions";
+import Pagination from "@/app/admin/_components/Pagination";
+
+const PER_PAGE = 20;
 
 interface MpesaCallback {
   id:                string;
@@ -70,15 +73,30 @@ function PlanBadge({ plan }: { plan: string }) {
 export default function PaymentsView({ mpesaCallbacks, subscriptionPayments }: Props) {
   const [tab,       setTab]       = useState<Tab>("callbacks");
   const [cbFilter,  setCbFilter]  = useState<CbFilter>("all");
+  const [cbPage,    setCbPage]    = useState(1);
+  const [subPage,   setSubPage]   = useState(1);
   const [localCbs,  setLocalCbs]  = useState(mpesaCallbacks);
   const [feedback,  setFeedback]  = useState<{ ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Reset pages on tab or filter change
+  useEffect(() => { setCbPage(1); setSubPage(1); }, [tab]);
+  useEffect(() => { setCbPage(1); }, [cbFilter]);
 
   const filteredCbs = useMemo(() => {
     if (cbFilter === "processed")   return localCbs.filter(c => c.processed);
     if (cbFilter === "unprocessed") return localCbs.filter(c => !c.processed);
     return localCbs;
   }, [localCbs, cbFilter]);
+
+  const paginatedCbs  = useMemo(
+    () => filteredCbs.slice((cbPage - 1) * PER_PAGE, cbPage * PER_PAGE),
+    [filteredCbs, cbPage]
+  );
+  const paginatedSubs = useMemo(
+    () => subscriptionPayments.slice((subPage - 1) * PER_PAGE, subPage * PER_PAGE),
+    [subscriptionPayments, subPage]
+  );
 
   function handleMarkProcessed(id: string) {
     startTransition(async () => {
@@ -169,7 +187,7 @@ export default function PaymentsView({ mpesaCallbacks, subscriptionPayments }: P
                   {filteredCbs.length === 0 && (
                     <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">No callbacks found</td></tr>
                   )}
-                  {filteredCbs.map(c => (
+                  {paginatedCbs.map(c => (
                     <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3 text-xs font-mono text-gray-500 max-w-[160px] truncate">{c.checkoutRequestId}</td>
                       <td className="px-3 py-3 text-xs font-mono text-gray-700">{c.mpesaReceiptNo || "—"}</td>
@@ -213,6 +231,14 @@ export default function PaymentsView({ mpesaCallbacks, subscriptionPayments }: P
               </table>
             </div>
           </div>
+          <Pagination
+            page={cbPage}
+            totalPages={Math.ceil(filteredCbs.length / PER_PAGE)}
+            total={filteredCbs.length}
+            perPage={PER_PAGE}
+            label="callbacks"
+            onPage={setCbPage}
+          />
         </div>
       )}
 
@@ -236,7 +262,7 @@ export default function PaymentsView({ mpesaCallbacks, subscriptionPayments }: P
                 {subscriptionPayments.length === 0 && (
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">No payments found</td></tr>
                 )}
-                {subscriptionPayments.map(p => (
+                {paginatedSubs.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium text-gray-800 text-xs">{p.userName}</p>
@@ -253,6 +279,14 @@ export default function PaymentsView({ mpesaCallbacks, subscriptionPayments }: P
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={subPage}
+            totalPages={Math.ceil(subscriptionPayments.length / PER_PAGE)}
+            total={subscriptionPayments.length}
+            perPage={PER_PAGE}
+            label="payments"
+            onPage={setSubPage}
+          />
         </div>
       )}
     </div>
