@@ -1,8 +1,9 @@
 "use server";
 
-import { auth }         from "@/auth";
-import prisma           from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { auth }                      from "@/auth";
+import prisma                         from "@/lib/prisma";
+import { revalidateTag }              from "next/cache";
+import { ADMIN_TAG }                  from "@/app/admin/_lib/cache";
 
 async function requireAdmin() {
   const session = await auth();
@@ -15,36 +16,30 @@ async function requireAdmin() {
   return session.user.id;
 }
 
+/** Bust all admin caches at once. */
+function bust() { revalidateTag(ADMIN_TAG, "default"); }
+
 export async function updateUserPlan(userId: string, plan: string) {
   await requireAdmin();
-  await prisma.userSubscription.update({
-    where: { userId },
-    data:  { plan },
-  });
-  revalidatePath("/admin");
-  revalidatePath("/admin/users");
+  await prisma.userSubscription.update({ where: { userId }, data: { plan } });
+  bust();
   return { ok: true };
 }
 
 export async function addProBalance(userId: string, amount: number) {
   await requireAdmin();
   await prisma.userSubscription.update({
-    where:  { userId },
-    data:   { proBalance: { increment: amount } },
+    where: { userId },
+    data:  { proBalance: { increment: amount } },
   });
-  revalidatePath("/admin");
-  revalidatePath("/admin/users");
+  bust();
   return { ok: true };
 }
 
 export async function updateUserRole(userId: string, role: string) {
   await requireAdmin();
-  await prisma.profile.update({
-    where: { userId },
-    data:  { role },
-  });
-  revalidatePath("/admin");
-  revalidatePath("/admin/users");
+  await prisma.profile.update({ where: { userId }, data: { role } });
+  bust();
   return { ok: true };
 }
 
@@ -54,8 +49,7 @@ export async function suspendShop(shopId: string) {
     where: { shopId },
     data:  { status: "suspended" },
   });
-  revalidatePath("/admin");
-  revalidatePath("/admin/shops");
+  bust();
   return { ok: true };
 }
 
@@ -65,17 +59,13 @@ export async function unsuspendShop(shopId: string) {
     where: { shopId },
     data:  { status: "active" },
   });
-  revalidatePath("/admin");
-  revalidatePath("/admin/shops");
+  bust();
   return { ok: true };
 }
 
 export async function markCallbackProcessed(id: string) {
   await requireAdmin();
-  await prisma.mpesaCallback.update({
-    where: { id },
-    data:  { processed: true },
-  });
-  revalidatePath("/admin/payments");
+  await prisma.mpesaCallback.update({ where: { id }, data: { processed: true } });
+  bust();
   return { ok: true };
 }
