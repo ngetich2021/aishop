@@ -62,14 +62,22 @@ export default async function WelcomePage() {
     });
   }
 
-  const role    = profile.role.toLowerCase().trim();
-  const jwtRole = (session.user.role ?? "user").toLowerCase().trim();
+  // Use `let` so we can correct a stale "user" role below without a redirect.
+  let role = profile.role.toLowerCase().trim();
 
-  // JWT is stale (e.g. role was just promoted in DB but token not yet refreshed)
-  // Trigger a one-time session.update() so the Navbar shows the correct role.
-  if (jwtRole !== role) {
-    return <SessionRefresher target="/welcome" />;
-  }
+  /*
+   * ── REMOVED: jwtRole !== role → SessionRefresher target="/welcome" ─────────
+   *
+   * That pattern created an infinite loading loop:
+   *   /welcome → SessionRefresher → update() hangs/fails → navigate "/welcome"
+   *   → jwtRole still stale → SessionRefresher again → repeat forever.
+   *
+   * The /welcome page has no Navbar so a stale JWT causes zero visible harm.
+   * When the user enters a shop, SessionSync in [id]/layout.tsx refreshes the
+   * JWT silently.  We render entirely from DB role (always correct); JWT is
+   * best-effort and eventually consistent.
+   * ──────────────────────────────────────────────────────────────────────────
+   */
 
   // ── STAFF / MANAGER ───────────────────────────────────────────────────────
   if (role === "staff" || role === "manager") {
@@ -97,7 +105,7 @@ export default async function WelcomePage() {
         );
       }
 
-      // Refresh JWT so Navbar shows up-to-date allowedRoutes immediately
+      // Navigate to dashboard — SessionSync there will refresh the JWT.
       return <SessionRefresher target={`/${profile.shopId}/dashboard`} />;
     }
 
@@ -105,13 +113,16 @@ export default async function WelcomePage() {
     return <WaitingPage userName={userName} />;
   }
 
-  // ── ROLE = "user" — if they already own shops, auto-promote to owner ─────
-  // Handles timing edge case where role wasn't updated in the session yet.
+  // ── ROLE = "user" — if they already own shops, fix the stale role ─────────
+  // Handles a timing edge case where promoteToOwner ran but this request
+  // hit the DB before the commit was visible (or the profile row is cached).
+  // FIX: update role in-memory and continue rendering — DO NOT loop back to
+  // /welcome via SessionRefresher; the JWT is refreshed by SessionSync later.
   if (role === "user") {
     const ownedShops = await prisma.shop.count({ where: { userId } });
     if (ownedShops > 0) {
       await prisma.profile.update({ where: { userId }, data: { role: "owner" } });
-      return <SessionRefresher target="/welcome" />;
+      role = "owner"; // fall through to owner rendering below
     }
   }
 

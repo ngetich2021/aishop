@@ -33,10 +33,26 @@ export default async function DashboardPage({ params }: Props) {
 
   // ── Access guard ──────────────────────────────────────────────────────────
   if (isAdmin) {
+    // Owner/admin: verify they own this specific shop
     const owned = await prisma.shop.findUnique({ where: { id: shopId }, select: { userId: true } });
     if (!owned || owned.userId !== userId) redirect("/welcome");
+  } else if (role === "user") {
+    /*
+     * Edge case: DB still shows "user" but the user just created this shop
+     * (promoteToOwner write hasn't been seen yet by this DB connection).
+     * Check ownership directly rather than failing on profile.shopId (which
+     * is only set for staff, never for owners).  If they own it, let them in;
+     * SessionSync will fix the role in the JWT in the background.
+     */
+    const owned = await prisma.shop.findUnique({ where: { id: shopId }, select: { userId: true } });
+    if (owned?.userId === userId) {
+      // They're the owner — treat as admin for this request
+      // (role will be corrected to "owner" in the next JWT refresh)
+    } else if (profile?.shopId !== shopId) {
+      redirect("/welcome");
+    }
   } else {
-    // Non-admin must be assigned to this shop
+    // Staff / manager: must be explicitly assigned to this shop
     if (profile?.shopId !== shopId) redirect("/welcome");
   }
 
