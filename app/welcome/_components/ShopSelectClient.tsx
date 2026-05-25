@@ -167,16 +167,32 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
 
   const handleClose = () => setModalOpen(false);
 
-  const handleSuccess = async (shopId?: string) => {
+  const handleSuccess = (shopId?: string) => {
     setModalOpen(false);
-    await update(); // re-read role + plan from DB into JWT
-    // On first shop creation go directly into the shop so the user doesn't
-    // have to click again. On edits, stay on welcome to refresh the list.
-    if (shopId && shops.length === 0) {
-      window.location.href = `/${shopId}/dashboard`;
-    } else {
-      window.location.href = "/welcome";
-    }
+
+    // Destination before we kick off the JWT refresh
+    const dest = shopId && shops.length === 0
+      ? `/${shopId}/dashboard`
+      : "/welcome";
+
+    /*
+     * update() is a network request (POST /api/auth/session).  On slow or
+     * throttled connections it can hang indefinitely — gating navigation on
+     * it causes the user to sit on a closed modal with nothing happening.
+     *
+     * Fix: race against a 3-second fallback.  The server-side layout reads
+     * role from the DB directly, so a stale JWT is fine; SessionSync will
+     * refresh it silently after render.
+     */
+    const go = (() => {
+      let done = false;
+      return () => { if (!done) { done = true; window.location.href = dest; } };
+    })();
+
+    const fallback = setTimeout(go, 3000);
+    update()
+      .catch(() => {})
+      .finally(() => { clearTimeout(fallback); go(); });
   };
 
   const handleDelete = async (id: string) => {

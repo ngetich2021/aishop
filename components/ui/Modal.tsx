@@ -28,15 +28,20 @@ export default function Modal({ open, onClose, title, children, size = "md" }: M
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full ${sizeMap[size]} bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]`}>
+      <div className={`relative w-full ${sizeMap[size]} bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700 shrink-0">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{title}</h2>
+          {/*
+           * aria-label="Close" lets the global CSS apply the 44×44 px touch
+           * target rule (WCAG 2.5.5) and correct dark-mode color automatically.
+           */}
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            aria-label="Close"
+            className="rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <X size={18} />
           </button>
