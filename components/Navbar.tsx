@@ -19,7 +19,7 @@ import { FcSalesPerformance } from "react-icons/fc";
 import { FaPersonThroughWindow } from "react-icons/fa6";
 import { GiBuyCard } from "react-icons/gi";
 import { TbReportAnalytics } from "react-icons/tb";
-import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins, CreditCard, Sun, Moon } from "lucide-react";
+import { Menu, X, ChevronRight, ArrowLeftRight, HandCoins, CreditCard, Sun, Moon, Shield } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const W_OPEN   = 248 as const;
@@ -55,10 +55,11 @@ function initials(name?: string | null) {
 
 function roleBadgeColor(role?: string) {
   switch (role?.toLowerCase()) {
-    case "owner":   return "bg-indigo-100 text-indigo-700";
-    case "manager": return "bg-blue-100 text-blue-700";
-    case "staff":   return "bg-gray-100 text-gray-600";
-    default:        return "bg-gray-100 text-gray-500";
+    case "system_admin": return "bg-red-100 text-red-700";
+    case "owner":        return "bg-indigo-100 text-indigo-700";
+    case "manager":      return "bg-blue-100 text-blue-700";
+    case "staff":        return "bg-gray-100 text-gray-600";
+    default:             return "bg-gray-100 text-gray-500";
   }
 }
 
@@ -109,6 +110,15 @@ function ProfileDropdown({
 
       {/* Actions */}
       <div className="py-1.5">
+        {role === "system_admin" && (
+          <Link
+            href="/admin"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+          >
+            <Shield size={17} />
+            Admin Console
+          </Link>
+        )}
         {isStaff && shopId && (
           <Link
             href={`/${shopId}/hr/advance`}

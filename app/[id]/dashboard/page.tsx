@@ -21,7 +21,7 @@ export default async function DashboardPage({ params }: Props) {
   });
 
   const role          = (profile?.role ?? "user").toLowerCase().trim();
-  const isAdmin       = role === "admin" || role === "owner";
+  const isAdmin       = role === "admin" || role === "owner" || role === "system_admin";
   const allowedRoutes = parseAllowedRoutes(profile?.allowedRoutes);
 
   const can = (prefix: string) => isRouteAllowed(prefix, role, allowedRoutes);

@@ -171,7 +171,7 @@ export default async function WelcomePage() {
 
   // ── OWNER / ADMIN / NEW USER ──────────────────────────────────────────────
 
-  const isOwner   = role === "owner";
+  const isOwner   = role === "owner" || role === "system_admin";
   const isAdmin   = role === "admin";
   const canManage = isOwner || isAdmin || role === "user";
 
