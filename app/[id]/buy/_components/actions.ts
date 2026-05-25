@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { walletDeduct } from "@/lib/actions";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
@@ -46,7 +46,7 @@ export async function createBuyAction(
         authorizedBy:  resolvedActor,
       },
     });
-    revalidatePath(`/${shopId}/buy`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to create purchase order." };
@@ -109,7 +109,7 @@ export async function updateBuyStatusAction(
       await prisma.buy.update({ where: { id }, data: { status } });
     }
 
-    revalidatePath(`/${buy.shopId}/buy`, "page");
+    bustShop(buy.shopId);
     return { success: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed.";
@@ -137,7 +137,7 @@ export async function deleteBuyAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.buy.delete({ where: { id } });
-    revalidatePath(`/${buy.shopId}/buy`, "page");
+    bustShop(buy.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

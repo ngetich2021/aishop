@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, walletDeduct, capturePayment } from "@/lib/actions";
 import { planGuardCreate } from "@/lib/plan-guard";
@@ -8,10 +8,10 @@ import { planGuardCreate } from "@/lib/plan-guard";
 export type ActionResult = { success: boolean; error?: string };
 
 function revalidate(shopId: string) {
-  revalidatePath(`/${shopId}/finance/wallet`,   "page");
-  revalidatePath(`/${shopId}/finance/payments`, "page");
-  revalidatePath(`/${shopId}/finance/expenses`, "page");
-  revalidatePath(`/${shopId}/dashboard`,        "page");
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
 }
 
 export async function depositAction(

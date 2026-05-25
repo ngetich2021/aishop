@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { v2 as cloudinary } from "cloudinary";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
@@ -47,7 +47,7 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 function revalidateProducts(shopId: string) {
-  revalidatePath(`/${shopId}/inventory/products`);
+  bustShop(shopId);
 }
 
 // ── PRODUCT ───────────────────────────────────────────────────────────────────

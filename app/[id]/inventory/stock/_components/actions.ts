@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import * as z from "zod";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
@@ -98,8 +98,8 @@ export async function saveAdjustmentAction(
       }),
     ]);
 
-    revalidatePath(`/${v.shopId}/inventory/stock`);
-    revalidatePath(`/${v.shopId}/inventory/products`);
+    bustShop(v.shopId);
+    bustShop(v.shopId);
     return { success: true };
   } catch (err) {
     if (err instanceof z.ZodError)
@@ -129,7 +129,7 @@ export async function deleteAdjustmentAction(id: string, shopId: string): Promis
       return { success: false, error: "Not authorised to delete this adjustment" };
 
     await prisma.adjustment.delete({ where: { id } });
-    revalidatePath(`/${shopId}/inventory/stock`);
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed" };

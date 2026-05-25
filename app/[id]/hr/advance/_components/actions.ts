@@ -1,16 +1,16 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
 function invalidate(shopId: string) {
-  revalidatePath(`/${shopId}/hr/advance`, "page");
-  revalidatePath(`/${shopId}/hr/payroll`, "page");
-  revalidatePath(`/${shopId}/hr/salary`, "page");
-  revalidatePath(`/${shopId}/dashboard`);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
 }
 
 export async function requestAdvanceAction(
@@ -44,7 +44,7 @@ export async function requestAdvanceAction(
         status:  "requested",
       },
     });
-    revalidatePath(`/${shopId}/hr/advance`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to submit advance request." };
@@ -144,7 +144,7 @@ export async function deleteAdvanceAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.advance.delete({ where: { id } });
-    revalidatePath(`/${advance.shopId}/hr/advance`, "page");
+    bustShop(advance.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

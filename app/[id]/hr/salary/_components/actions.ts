@@ -1,15 +1,15 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
 
 function invalidate(shopId: string) {
-  revalidatePath(`/${shopId}/hr/salary`, "page");
-  revalidatePath(`/${shopId}/hr/payroll`, "page");
-  revalidatePath(`/${shopId}/dashboard`);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
 }
 
 export async function autoGenerateSalariesAction(shopId: string): Promise<ActionResult> {
@@ -91,7 +91,7 @@ export async function deleteSalaryAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.salary.delete({ where: { id } });
-    revalidatePath(`/${salary.shopId}/hr/salary`, "page");
+    bustShop(salary.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed" };

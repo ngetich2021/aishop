@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, logActivity, capturePayment } from "@/lib/actions";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
@@ -10,11 +10,11 @@ export type ActionResult = { success: boolean; error?: string; saleId?: string }
 type PaymentLine = { method: string; amount: number };
 
 function revalidate(shopId: string) {
-  revalidatePath(`/${shopId}/sales/sold`,       "page");
-  revalidatePath(`/${shopId}/finance/payments`, "page");
-  revalidatePath(`/${shopId}/finance/credit`,   "page");
-  revalidatePath(`/${shopId}/inventory/stock`);
-  revalidatePath(`/${shopId}/dashboard`);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
+  bustShop(shopId);
 }
 
 // ── CREATE SALE ───────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ export async function markSalePrintedAction(
 
   try {
     await prisma.sale.update({ where: { id: saleId }, data: { isPrinted: true } });
-    revalidatePath(`/${shopId}/sales/sold`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to mark printed." };

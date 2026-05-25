@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import prisma from "@/lib/prisma";
 import * as z from "zod";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
@@ -159,7 +159,7 @@ export async function saveQuoteAction(_: ActionResult, formData: FormData): Prom
       });
     }
 
-    revalidatePath(`/${resolvedShopId}/sales/quote`, "page");
+    bustShop(resolvedShopId);
     return { success: true };
   } catch (err) {
     if (err instanceof z.ZodError) return { success: false, error: err.issues[0]?.message ?? "Validation failed" };
@@ -180,7 +180,7 @@ export async function deleteQuoteAction(id: string): Promise<ActionResult> {
       prisma.quoteItem.deleteMany({ where: { quoteId: id } }),
       prisma.quote.delete({ where: { id } }),
     ]);
-    revalidatePath(`/${quote.shopId}/sales/quote`, "page");
+    bustShop(quote.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed" };
@@ -345,11 +345,11 @@ export async function convertQuoteToSaleAction(
     });
 
     const sid = quote.shopId;
-    revalidatePath(`/${sid}/sales/quote`, "page");
-    revalidatePath(`/${sid}/sales/sold`,  "page");
-    revalidatePath(`/${sid}/finance/credit`);
-    revalidatePath(`/${sid}/finance/payments`);
-    revalidatePath(`/${sid}/dashboard`);
+    bustShop(sid);
+    bustShop(sid);
+    bustShop(sid);
+    bustShop(sid);
+    bustShop(sid);
     return { success: true };
   } catch (err) {
     if (err instanceof Error) return { success: false, error: err.message };

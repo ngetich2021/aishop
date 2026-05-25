@@ -1,9 +1,10 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
-import SuppliersView from "./_components/SuppliersView";
+import { auth }                  from "@/auth";
+import { redirect }              from "next/navigation";
+import prisma                     from "@/lib/prisma";
+import SuppliersView              from "./_components/SuppliersView";
+import { getSuppliersPageData }   from "@/lib/shop-cache";
 
-export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -14,10 +15,7 @@ export default async function SuppliersPage({ params }: Props) {
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
 
-  const profile = await prisma.profile.findUnique({
-    where:  { userId },
-    select: { role: true, shopId: true },
-  });
+  const profile = await prisma.profile.findUnique({ where: { userId }, select: { role: true, shopId: true } });
 
   const role      = (profile?.role ?? "user").toLowerCase().trim();
   const isAdmin   = role === "admin" || role === "owner";
@@ -30,33 +28,10 @@ export default async function SuppliersPage({ params }: Props) {
     if (profile?.shopId !== shopId) redirect("/welcome");
   }
 
-  const shop = await prisma.shop.findUnique({
-    where:  { id: shopId },
-    select: { id: true, name: true, location: true },
-  });
+  const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { id: true, name: true, location: true } });
   if (!shop) redirect("/welcome");
 
-  const raw = await prisma.supplier.findMany({
-    where:   { shopId },
-    include: { _count: { select: { buys: true } } },
-    orderBy: { name: "asc" },
-  });
+  const suppliers = await getSuppliersPageData(shopId);
 
-  const suppliers = raw.map(s => ({
-    id:        s.id,
-    name:      s.name,
-    contact1:  s.contact1,
-    contact2:  s.contact2,
-    goodsType: s.goodsType,
-    buyCount:  s._count.buys,
-  }));
-
-  return (
-    <SuppliersView
-      activeShop={{ id: shop.id, name: shop.name, location: shop.location }}
-      isAdmin={isAdmin}
-      isManager={isManager}
-      suppliers={suppliers}
-    />
-  );
+  return <SuppliersView activeShop={{ id: shop.id, name: shop.name, location: shop.location }} isAdmin={isAdmin} isManager={isManager} suppliers={suppliers} />;
 }

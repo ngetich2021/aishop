@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
@@ -33,7 +33,7 @@ export async function createAssetAction(
         imageUrl: data.imageUrl?.trim() || null,
       },
     });
-    revalidatePath(`/${shopId}/assets`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to add asset." };
@@ -67,7 +67,7 @@ export async function updateAssetAction(
         imageUrl: data.imageUrl?.trim() || null,
       },
     });
-    revalidatePath(`/${asset.shopId}/assets`, "page");
+    bustShop(asset.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Update failed." };
@@ -91,7 +91,7 @@ export async function deleteAssetAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.asset.delete({ where: { id } });
-    revalidatePath(`/${asset.shopId}/assets`, "page");
+    bustShop(asset.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

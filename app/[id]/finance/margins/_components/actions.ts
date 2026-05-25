@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string };
@@ -32,8 +32,8 @@ export async function createMarginAction(
         date:       data.date ? new Date(`${data.date}T00:00:00.000Z`) : new Date(),
       },
     });
-    revalidatePath(`/${shopId}/finance/margins`, "page");
-    revalidatePath(`/${shopId}/dashboard`);
+    bustShop(shopId);
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to record margin." };
@@ -57,7 +57,7 @@ export async function deleteMarginAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.margin.delete({ where: { id } });
-    revalidatePath(`/${margin.shopId}/finance/margins`, "page");
+    bustShop(margin.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

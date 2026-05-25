@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
 export type ActionResult = { success: boolean; error?: string; id?: string };
@@ -26,7 +26,7 @@ export async function createSupplierAction(
         goodsType: data.goodsType?.trim() || null,
       },
     });
-    revalidatePath(`/${shopId}/suppliers`, "page");
+    bustShop(shopId);
     return { success: true, id: supplier.id };
   } catch {
     return { success: false, error: "Failed to add supplier." };
@@ -61,7 +61,7 @@ export async function updateSupplierAction(
         goodsType: data.goodsType?.trim() || null,
       },
     });
-    revalidatePath(`/${supplier.shopId}/suppliers`, "page");
+    bustShop(supplier.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Update failed." };
@@ -85,7 +85,7 @@ export async function deleteSupplierAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.supplier.delete({ where: { id } });
-    revalidatePath(`/${supplier.shopId}/suppliers`, "page");
+    bustShop(supplier.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

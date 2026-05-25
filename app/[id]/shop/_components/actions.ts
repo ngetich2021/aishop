@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { DAILY_RATE, DEMO_SHOP_LIMIT, DEMO_PLUS_SHOP_LIMIT } from "@/lib/billing-constants";
 
 function isOwner(role: string) {
@@ -40,7 +40,7 @@ export async function saveShopAction(formData: FormData) {
       if (!existing) return { error: "Shop not found." };
       if (existing.userId !== userId) return { error: "You can only edit your own shop." };
       await prisma.shop.update({ where: { id: shopId }, data: { name, tel, location } });
-      revalidatePath(`/${userId}/shop`);
+      bustShop(userId);
       return { success: true };
     }
 
@@ -81,7 +81,7 @@ export async function saveShopAction(formData: FormData) {
         });
       });
 
-      revalidatePath(`/${userId}/shop`);
+      bustShop(userId);
       return { success: true, shopId: newShopId };
     }
 
@@ -93,7 +93,7 @@ export async function saveShopAction(formData: FormData) {
       await tx.wallet.create({ data: { shopId: shop.id, balance: 0 } });
     });
 
-    revalidatePath(`/${userId}/shop`);
+    bustShop(userId);
     return { success: true, shopId: newShopId };
   } catch (err) {
     console.error("saveShopAction error:", err);
@@ -115,5 +115,5 @@ export async function deleteShopAction(id: string) {
   if (shop.userId !== userId) throw new Error("You can only delete your own shop.");
 
   await prisma.shop.delete({ where: { id } });
-  revalidatePath(`/${userId}/shop`);
+  bustShop(userId);
 }

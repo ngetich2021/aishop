@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import prisma             from "@/lib/prisma";
 import { resolveActor, logActivity } from "@/lib/actions";
 import { planGuardMutate } from "@/lib/plan-guard";
@@ -39,8 +39,8 @@ export async function deletePaymentAction(
       path:     `/${shopId}/finance/payments`,
     });
 
-    revalidatePath(`/${payment.shopId}/finance/payments`, "page");
-    revalidatePath(`/${payment.shopId}/dashboard`);
+    bustShop(payment.shopId);
+    bustShop(payment.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

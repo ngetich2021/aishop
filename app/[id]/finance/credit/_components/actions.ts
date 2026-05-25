@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { capturePayment } from "@/lib/actions";
 import { planGuardMutate } from "@/lib/plan-guard";
 
@@ -58,8 +58,8 @@ export async function addCreditPaymentAction(
         source: "credit_payment",
       });
     });
-    revalidatePath(`/${shopId}/finance/credit`, "page");
-    revalidatePath(`/${shopId}/dashboard`);
+    bustShop(shopId);
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to record payment." };
@@ -83,7 +83,7 @@ export async function deleteCreditAction(id: string): Promise<ActionResult> {
 
   try {
     await prisma.credit.delete({ where: { id } });
-    revalidatePath(`/${credit.shopId}/finance/credit`, "page");
+    bustShop(credit.shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };

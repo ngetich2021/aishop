@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 
 export type ActionResult = { success: boolean; error?: string };
 
@@ -25,8 +25,8 @@ async function getCtx() {
 }
 
 function invalidate(shopId: string) {
-  revalidatePath(`/${shopId}/inventory/stock`);
-  revalidatePath(`/${shopId}/inventory/products`);
+  bustShop(shopId);
+  bustShop(shopId);
 }
 
 // ── CREATE RETURN ─────────────────────────────────────────────────────────────

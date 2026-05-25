@@ -2,7 +2,7 @@
 
 import { auth }                  from "@/auth";
 import prisma                    from "@/lib/prisma";
-import { revalidatePath }        from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { z }                     from "zod";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 import { sendStaffInviteEmail }  from "@/lib/email";
@@ -126,7 +126,7 @@ export async function saveStaffAction(
         }),
       ]);
     }
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Save failed. Please try again." };
@@ -152,7 +152,7 @@ export async function deleteStaffAction(staffId: string, shopId: string): Promis
         data:  { role: "user", shopId: null, designation: null, allowedRoutes: [] },
       }),
     ]);
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };
@@ -184,7 +184,7 @@ export async function assignDesignationAction(args: {
       where: { userId: staffUserId },
       data:  { designation, allowedRoutes: roleRecord.allowedRoutes as string[] },
     });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Assign designation failed." };
@@ -209,7 +209,7 @@ export async function removeDesignationAction(args: {
       where: { userId: staffUserId },
       data:  { designation: null, allowedRoutes: [] },
     });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Remove designation failed." };
@@ -235,7 +235,7 @@ export async function saveAllowedRoutesAction(args: {
       where: { userId: staffUserId },
       data:  { allowedRoutes },
     });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Save sections failed." };
@@ -264,7 +264,7 @@ export async function assignStaffRoleAction(args: {
       where: { userId: staffUserId },
       data:  { role: roleName },
     });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Role update failed." };
@@ -317,7 +317,7 @@ export async function saveRoleAction(data: {
         data: { shopId: data.shopId, name: data.name, description: data.description, allowedRoutes: data.allowedRoutes },
       });
     }
-    revalidatePath(`/${data.shopId}/hr/staff`, "page");
+    bustShop(data.shopId);
     return { success: true };
   } catch (e: unknown) {
     if ((e as { code?: string }).code === "P2002")
@@ -350,7 +350,7 @@ export async function deleteRoleAction(args: { roleId: string; shopId: string })
       data:  { designation: null, allowedRoutes: [] },
     });
     await prisma.role.delete({ where: { id: roleId } });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete designation failed." };
@@ -420,7 +420,7 @@ export async function sendStaffInviteAction(args: {
       console.error("[sendStaffInviteAction] email error:", emailError);
     }
 
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true, inviteUrl, emailError };
   } catch {
     return { success: false, error: "Failed to create invite." };
@@ -461,7 +461,7 @@ export async function cancelStaffInviteAction(args: {
 
   try {
     await prisma.shopInvite.delete({ where: { id: inviteId } });
-    revalidatePath(`/${shopId}/hr/staff`, "page");
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Cancel failed." };

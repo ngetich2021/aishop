@@ -2,7 +2,7 @@
 
 import { auth }           from "@/auth";
 import prisma             from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { bustShop } from "@/lib/shop-cache";
 import { z }              from "zod";
 import { planGuardCreate, planGuardMutate } from "@/lib/plan-guard";
 
@@ -103,8 +103,8 @@ export async function saveExpenseAction(
       ]);
     }
 
-    revalidatePath(`/${shopId}/finance/expenses`, "page");
-    revalidatePath(`/${shopId}/finance/wallet`,   "page");
+    bustShop(shopId);
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: expenseId ? "Update failed." : "Create failed." };
@@ -133,8 +133,8 @@ export async function deleteExpenseAction(id: string, shopId: string): Promise<A
       }),
     ]);
 
-    revalidatePath(`/${shopId}/finance/expenses`, "page");
-    revalidatePath(`/${shopId}/finance/wallet`,   "page");
+    bustShop(shopId);
+    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Delete failed." };
