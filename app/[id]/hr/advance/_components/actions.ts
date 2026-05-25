@@ -8,9 +8,6 @@ export type ActionResult = { success: boolean; error?: string };
 
 function invalidate(shopId: string) {
   bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
 }
 
 export async function requestAdvanceAction(

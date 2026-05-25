@@ -9,9 +9,6 @@ export type ActionResult = { success: boolean; error?: string };
 
 function revalidate(shopId: string) {
   bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
 }
 
 export async function depositAction(

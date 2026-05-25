@@ -346,10 +346,6 @@ export async function convertQuoteToSaleAction(
 
     const sid = quote.shopId;
     bustShop(sid);
-    bustShop(sid);
-    bustShop(sid);
-    bustShop(sid);
-    bustShop(sid);
     return { success: true };
   } catch (err) {
     if (err instanceof Error) return { success: false, error: err.message };

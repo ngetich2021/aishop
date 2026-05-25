@@ -59,7 +59,6 @@ export async function addCreditPaymentAction(
       });
     });
     bustShop(shopId);
-    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: "Failed to record payment." };

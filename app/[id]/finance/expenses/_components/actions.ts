@@ -104,7 +104,6 @@ export async function saveExpenseAction(
     }
 
     bustShop(shopId);
-    bustShop(shopId);
     return { success: true };
   } catch {
     return { success: false, error: expenseId ? "Update failed." : "Create failed." };
@@ -133,7 +132,6 @@ export async function deleteExpenseAction(id: string, shopId: string): Promise<A
       }),
     ]);
 
-    bustShop(shopId);
     bustShop(shopId);
     return { success: true };
   } catch {

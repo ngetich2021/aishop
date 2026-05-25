@@ -11,10 +11,6 @@ type PaymentLine = { method: string; amount: number };
 
 function revalidate(shopId: string) {
   bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
-  bustShop(shopId);
 }
 
 // ── CREATE SALE ───────────────────────────────────────────────────────────────

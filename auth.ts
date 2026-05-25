@@ -66,11 +66,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       if (!user?.id) return;
       try {
+        const now = new Date();
+        // Close ALL previously open sessions (browser crash / idle timeout leftovers)
+        await prisma.loginLog.updateMany({
+          where: { userId: user.id, logoutTime: null },
+          data:  { logoutTime: now, lastSeen: now },
+        });
+        // Create the new session entry
         await prisma.loginLog.create({
           data: {
             userId:    user.id,
-            loginTime: new Date(),
-            lastSeen:  new Date(),
+            loginTime: now,
+            lastSeen:  now,
             duration:  0,
           },
         });
@@ -84,8 +91,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         ("session" in message && (message.session as { userId?: string })?.userId);
       if (!userId) return;
       try {
+        // Find the currently open session (logoutTime IS NULL)
         const log = await prisma.loginLog.findFirst({
-          where:   { userId },
+          where:   { userId, logoutTime: null },
           orderBy: { loginTime: "desc" },
         });
         if (!log) return;

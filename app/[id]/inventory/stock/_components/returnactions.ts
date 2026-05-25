@@ -26,7 +26,6 @@ async function getCtx() {
 
 function invalidate(shopId: string) {
   bustShop(shopId);
-  bustShop(shopId);
 }
 
 // ── CREATE RETURN ─────────────────────────────────────────────────────────────
