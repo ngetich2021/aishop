@@ -14,6 +14,7 @@ declare module "next-auth" {
       allowedRoutes: string[];
       plan:          string;
       planExpiry?:   string; // ISO string, set for demo_plus; undefined for pro/demo
+      isSystemAdmin: boolean;
     };
   }
 }
@@ -115,7 +116,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const [profile, subscription, shopCount] = await Promise.all([
           prisma.profile.findUnique({
             where:  { userId: user.id },
-            select: { role: true, allowedRoutes: true },
+            select: { role: true, allowedRoutes: true, isSystemAdmin: true },
           }),
           prisma.userSubscription.findUnique({
             where:  { userId: user.id },
@@ -134,6 +135,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
         token["role"]          = role;
         token["allowedRoutes"] = (profile?.allowedRoutes ?? []) as string[];
+        token["isSystemAdmin"] = profile?.isSystemAdmin ?? false;
 
         // Ensure subscription exists (might not if createUser event hasn't fired yet)
         if (!subscription) {
@@ -168,7 +170,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           const [profile, subscription, shopCount] = await Promise.all([
             prisma.profile.findUnique({
               where:  { userId: uid },
-              select: { role: true, allowedRoutes: true },
+              select: { role: true, allowedRoutes: true, isSystemAdmin: true },
             }),
             prisma.userSubscription.findUnique({
               where:  { userId: uid },
@@ -185,6 +187,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             }
             token["role"]          = role;
             token["allowedRoutes"] = (profile.allowedRoutes ?? []) as string[];
+            token["isSystemAdmin"] = profile.isSystemAdmin ?? false;
           }
           if (subscription) {
             token["plan"]          = subscription.plan;
@@ -207,6 +210,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.image         = (token.picture as string | undefined) ?? session.user.image;
       session.user.plan          = (token["plan"]        as string | undefined) ?? "demo";
       session.user.planExpiry    = (token["planExpiry"]  as string | undefined) ?? undefined;
+      session.user.isSystemAdmin = (token["isSystemAdmin"] as boolean | undefined) ?? false;
       return session;
     },
   },

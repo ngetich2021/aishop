@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   Zap,
   Crown,
+  Shield,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import ShopFormModal, { ShopData } from "./ShopFormModal";
@@ -34,11 +36,12 @@ interface Shop {
 }
 
 interface Props {
-  shops:        Shop[];
-  canManage:    boolean;
-  userName:     string;
-  plan:         string;
-  planExpiry?:  string;
+  shops:          Shop[];
+  canManage:      boolean;
+  userName:       string;
+  plan:           string;
+  planExpiry?:    string;
+  isSystemAdmin?: boolean;
 }
 
 // ── Plan helpers ──────────────────────────────────────────────────────────────
@@ -104,7 +107,7 @@ function ShopMenu({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ShopSelectClient({ shops, canManage, userName, plan, planExpiry }: Props) {
+export default function ShopSelectClient({ shops, canManage, userName, plan, planExpiry, isSystemAdmin }: Props) {
   const router      = useRouter();
   const { update }  = useSession();
 
@@ -228,6 +231,28 @@ export default function ShopSelectClient({ shops, canManage, userName, plan, pla
   return (
     <>
       <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+
+        {/* ── System Admin Console banner ── */}
+        {isSystemAdmin && (
+          <div className="bg-linear-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <Shield size={17} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold leading-tight">System Administration</p>
+                <p className="text-[0.65rem] text-indigo-200 leading-tight">Manage users, shops, billing &amp; payments</p>
+              </div>
+            </div>
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition shrink-0"
+            >
+              Open Console
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+        )}
 
         {/* ── Suspension alert banner ── */}
         {canManage && shops.length > 0 && !isActive && (

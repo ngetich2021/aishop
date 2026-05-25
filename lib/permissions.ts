@@ -9,7 +9,7 @@
  * Each entry is a route prefix like "/sales", "/hr", "/finance".
  */
 
-const ADMIN_ROLES  = new Set(["admin", "owner", "system_admin"]);
+const ADMIN_ROLES  = new Set(["admin", "owner"]);
 const MANAGER_ROLES = new Set(["manager"]);
 
 export interface NavSection {

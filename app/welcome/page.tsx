@@ -51,14 +51,14 @@ export default async function WelcomePage() {
   // Upsert profile — guards against race on first sign-in
   let profile = await prisma.profile.findUnique({
     where:  { userId },
-    select: { role: true, shopId: true },
+    select: { role: true, shopId: true, isSystemAdmin: true },
   });
   if (!profile) {
     profile = await prisma.profile.upsert({
       where:  { userId },
       update: {},
       create: { userId, role: "user", email: userEmail || null },
-      select: { role: true, shopId: true },
+      select: { role: true, shopId: true, isSystemAdmin: true },
     });
   }
 
@@ -171,7 +171,7 @@ export default async function WelcomePage() {
 
   // ── OWNER / ADMIN / NEW USER ──────────────────────────────────────────────
 
-  const isOwner   = role === "owner" || role === "system_admin";
+  const isOwner   = role === "owner";
   const isAdmin   = role === "admin";
   const canManage = isOwner || isAdmin || role === "user";
 
@@ -219,6 +219,7 @@ export default async function WelcomePage() {
       userName={userName}
       plan={plan}
       planExpiry={planExpiry}
+      isSystemAdmin={profile?.isSystemAdmin ?? false}
     />
   );
 }

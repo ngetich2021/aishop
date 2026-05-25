@@ -38,6 +38,7 @@ model User {
 model Profile {
   userId        String   @id
   role          String   @default("user")
+  isSystemAdmin Boolean  @default(false)
   designation   String?
   allowedRoutes Json     @default("[]")
   fullName      String?

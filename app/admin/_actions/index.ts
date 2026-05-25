@@ -9,9 +9,9 @@ async function requireAdmin() {
   if (!session?.user?.id) throw new Error("Not authenticated");
   const profile = await prisma.profile.findUnique({
     where:  { userId: session.user.id },
-    select: { role: true },
+    select: { isSystemAdmin: true },
   });
-  if (profile?.role !== "system_admin") throw new Error("Not authorized");
+  if (!profile?.isSystemAdmin) throw new Error("Not authorized");
   return session.user.id;
 }
 

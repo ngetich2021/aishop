@@ -55,11 +55,10 @@ function initials(name?: string | null) {
 
 function roleBadgeColor(role?: string) {
   switch (role?.toLowerCase()) {
-    case "system_admin": return "bg-red-100 text-red-700";
-    case "owner":        return "bg-indigo-100 text-indigo-700";
-    case "manager":      return "bg-blue-100 text-blue-700";
-    case "staff":        return "bg-gray-100 text-gray-600";
-    default:             return "bg-gray-100 text-gray-500";
+    case "owner":   return "bg-indigo-100 text-indigo-700";
+    case "manager": return "bg-blue-100 text-blue-700";
+    case "staff":   return "bg-gray-100 text-gray-600";
+    default:        return "bg-gray-100 text-gray-500";
   }
 }
 
@@ -78,8 +77,8 @@ function Tip({ label, children }: { label: string; children: React.ReactNode }) 
 
 // ─── Profile Dropdown ─────────────────────────────────────────────────────────
 function ProfileDropdown({
-  name, email, image, role, shopId,
-}: { name?: string | null; email?: string | null; image?: string | null; role?: string; shopId?: string }) {
+  name, email, image, role, shopId, isSystemAdmin,
+}: { name?: string | null; email?: string | null; image?: string | null; role?: string; shopId?: string; isSystemAdmin?: boolean }) {
   const isStaff = role === "staff" || role === "manager";
 
   return (
@@ -110,10 +109,10 @@ function ProfileDropdown({
 
       {/* Actions */}
       <div className="py-1.5">
-        {role === "system_admin" && (
+        {isSystemAdmin && (
           <Link
             href="/admin"
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors font-medium"
           >
             <Shield size={17} />
             Admin Console
@@ -325,11 +324,12 @@ export default function Navbar() {
   }, [update]);
 
   const user = session?.user as {
-    name?:         string | null;
-    email?:        string | null;
-    image?:        string | null;
-    role?:         string;
+    name?:          string | null;
+    email?:         string | null;
+    image?:         string | null;
+    role?:          string;
     allowedRoutes?: string[];
+    isSystemAdmin?: boolean;
   } | undefined;
 
   // Extract shopId from path: /[shopId]/section/...
@@ -492,6 +492,7 @@ export default function Navbar() {
                   image={user?.image}
                   role={user?.role}
                   shopId={shopId}
+                  isSystemAdmin={user?.isSystemAdmin}
                 />
               )}
             </div>

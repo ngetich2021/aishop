@@ -14,10 +14,10 @@ export default async function AdminLayout({ children }: Props) {
 
   const profile = await prisma.profile.findUnique({
     where:  { userId: session.user.id },
-    select: { role: true, fullName: true },
+    select: { isSystemAdmin: true, fullName: true },
   });
 
-  if (profile?.role !== "system_admin") redirect("/");
+  if (!profile?.isSystemAdmin) redirect("/");
 
   const adminName = profile.fullName ?? session.user.name ?? session.user.email ?? "Admin";
 
