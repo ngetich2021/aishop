@@ -27,6 +27,7 @@ export type AggregateProfile = {
 export type ProfileMinAggregateOutputType = {
   userId: string | null
   role: string | null
+  isSystemAdmin: boolean | null
   designation: string | null
   fullName: string | null
   email: string | null
@@ -40,6 +41,7 @@ export type ProfileMinAggregateOutputType = {
 export type ProfileMaxAggregateOutputType = {
   userId: string | null
   role: string | null
+  isSystemAdmin: boolean | null
   designation: string | null
   fullName: string | null
   email: string | null
@@ -53,6 +55,7 @@ export type ProfileMaxAggregateOutputType = {
 export type ProfileCountAggregateOutputType = {
   userId: number
   role: number
+  isSystemAdmin: number
   designation: number
   allowedRoutes: number
   fullName: number
@@ -69,6 +72,7 @@ export type ProfileCountAggregateOutputType = {
 export type ProfileMinAggregateInputType = {
   userId?: true
   role?: true
+  isSystemAdmin?: true
   designation?: true
   fullName?: true
   email?: true
@@ -82,6 +86,7 @@ export type ProfileMinAggregateInputType = {
 export type ProfileMaxAggregateInputType = {
   userId?: true
   role?: true
+  isSystemAdmin?: true
   designation?: true
   fullName?: true
   email?: true
@@ -95,6 +100,7 @@ export type ProfileMaxAggregateInputType = {
 export type ProfileCountAggregateInputType = {
   userId?: true
   role?: true
+  isSystemAdmin?: true
   designation?: true
   allowedRoutes?: true
   fullName?: true
@@ -182,6 +188,7 @@ export type ProfileGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 export type ProfileGroupByOutputType = {
   userId: string
   role: string
+  isSystemAdmin: boolean
   designation: string | null
   allowedRoutes: runtime.JsonValue
   fullName: string | null
@@ -217,6 +224,7 @@ export type ProfileWhereInput = {
   NOT?: Prisma.ProfileWhereInput | Prisma.ProfileWhereInput[]
   userId?: Prisma.StringFilter<"Profile"> | string
   role?: Prisma.StringFilter<"Profile"> | string
+  isSystemAdmin?: Prisma.BoolFilter<"Profile"> | boolean
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
   allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -233,6 +241,7 @@ export type ProfileWhereInput = {
 export type ProfileOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isSystemAdmin?: Prisma.SortOrder
   designation?: Prisma.SortOrderInput | Prisma.SortOrder
   allowedRoutes?: Prisma.SortOrder
   fullName?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -252,6 +261,7 @@ export type ProfileWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.ProfileWhereInput[]
   NOT?: Prisma.ProfileWhereInput | Prisma.ProfileWhereInput[]
   role?: Prisma.StringFilter<"Profile"> | string
+  isSystemAdmin?: Prisma.BoolFilter<"Profile"> | boolean
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
   allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -268,6 +278,7 @@ export type ProfileWhereUniqueInput = Prisma.AtLeast<{
 export type ProfileOrderByWithAggregationInput = {
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isSystemAdmin?: Prisma.SortOrder
   designation?: Prisma.SortOrderInput | Prisma.SortOrder
   allowedRoutes?: Prisma.SortOrder
   fullName?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -288,6 +299,7 @@ export type ProfileScalarWhereWithAggregatesInput = {
   NOT?: Prisma.ProfileScalarWhereWithAggregatesInput | Prisma.ProfileScalarWhereWithAggregatesInput[]
   userId?: Prisma.StringWithAggregatesFilter<"Profile"> | string
   role?: Prisma.StringWithAggregatesFilter<"Profile"> | string
+  isSystemAdmin?: Prisma.BoolWithAggregatesFilter<"Profile"> | boolean
   designation?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
   allowedRoutes?: Prisma.JsonWithAggregatesFilter<"Profile">
   fullName?: Prisma.StringNullableWithAggregatesFilter<"Profile"> | string | null
@@ -301,6 +313,7 @@ export type ProfileScalarWhereWithAggregatesInput = {
 
 export type ProfileCreateInput = {
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -316,6 +329,7 @@ export type ProfileCreateInput = {
 export type ProfileUncheckedCreateInput = {
   userId: string
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -329,6 +343,7 @@ export type ProfileUncheckedCreateInput = {
 
 export type ProfileUpdateInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -344,6 +359,7 @@ export type ProfileUpdateInput = {
 export type ProfileUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -358,6 +374,7 @@ export type ProfileUncheckedUpdateInput = {
 export type ProfileCreateManyInput = {
   userId: string
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -371,6 +388,7 @@ export type ProfileCreateManyInput = {
 
 export type ProfileUpdateManyMutationInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -384,6 +402,7 @@ export type ProfileUpdateManyMutationInput = {
 export type ProfileUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -403,6 +422,7 @@ export type ProfileNullableScalarRelationFilter = {
 export type ProfileCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isSystemAdmin?: Prisma.SortOrder
   designation?: Prisma.SortOrder
   allowedRoutes?: Prisma.SortOrder
   fullName?: Prisma.SortOrder
@@ -417,6 +437,7 @@ export type ProfileCountOrderByAggregateInput = {
 export type ProfileMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isSystemAdmin?: Prisma.SortOrder
   designation?: Prisma.SortOrder
   fullName?: Prisma.SortOrder
   email?: Prisma.SortOrder
@@ -430,6 +451,7 @@ export type ProfileMaxOrderByAggregateInput = {
 export type ProfileMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isSystemAdmin?: Prisma.SortOrder
   designation?: Prisma.SortOrder
   fullName?: Prisma.SortOrder
   email?: Prisma.SortOrder
@@ -482,6 +504,10 @@ export type ProfileUncheckedUpdateOneWithoutUserNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProfileUpdateToOneWithWhereWithoutUserInput, Prisma.ProfileUpdateWithoutUserInput>, Prisma.ProfileUncheckedUpdateWithoutUserInput>
 }
 
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
+}
+
 export type ProfileCreateNestedManyWithoutShopInput = {
   create?: Prisma.XOR<Prisma.ProfileCreateWithoutShopInput, Prisma.ProfileUncheckedCreateWithoutShopInput> | Prisma.ProfileCreateWithoutShopInput[] | Prisma.ProfileUncheckedCreateWithoutShopInput[]
   connectOrCreate?: Prisma.ProfileCreateOrConnectWithoutShopInput | Prisma.ProfileCreateOrConnectWithoutShopInput[]
@@ -526,6 +552,7 @@ export type ProfileUncheckedUpdateManyWithoutShopNestedInput = {
 
 export type ProfileCreateWithoutUserInput = {
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -539,6 +566,7 @@ export type ProfileCreateWithoutUserInput = {
 
 export type ProfileUncheckedCreateWithoutUserInput = {
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -568,6 +596,7 @@ export type ProfileUpdateToOneWithWhereWithoutUserInput = {
 
 export type ProfileUpdateWithoutUserInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -581,6 +610,7 @@ export type ProfileUpdateWithoutUserInput = {
 
 export type ProfileUncheckedUpdateWithoutUserInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -594,6 +624,7 @@ export type ProfileUncheckedUpdateWithoutUserInput = {
 
 export type ProfileCreateWithoutShopInput = {
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -608,6 +639,7 @@ export type ProfileCreateWithoutShopInput = {
 export type ProfileUncheckedCreateWithoutShopInput = {
   userId: string
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -649,6 +681,7 @@ export type ProfileScalarWhereInput = {
   NOT?: Prisma.ProfileScalarWhereInput | Prisma.ProfileScalarWhereInput[]
   userId?: Prisma.StringFilter<"Profile"> | string
   role?: Prisma.StringFilter<"Profile"> | string
+  isSystemAdmin?: Prisma.BoolFilter<"Profile"> | boolean
   designation?: Prisma.StringNullableFilter<"Profile"> | string | null
   allowedRoutes?: Prisma.JsonFilter<"Profile">
   fullName?: Prisma.StringNullableFilter<"Profile"> | string | null
@@ -663,6 +696,7 @@ export type ProfileScalarWhereInput = {
 export type ProfileCreateManyShopInput = {
   userId: string
   role?: string
+  isSystemAdmin?: boolean
   designation?: string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: string | null
@@ -675,6 +709,7 @@ export type ProfileCreateManyShopInput = {
 
 export type ProfileUpdateWithoutShopInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -689,6 +724,7 @@ export type ProfileUpdateWithoutShopInput = {
 export type ProfileUncheckedUpdateWithoutShopInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -702,6 +738,7 @@ export type ProfileUncheckedUpdateWithoutShopInput = {
 export type ProfileUncheckedUpdateManyWithoutShopInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  isSystemAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   designation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allowedRoutes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -717,6 +754,7 @@ export type ProfileUncheckedUpdateManyWithoutShopInput = {
 export type ProfileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   userId?: boolean
   role?: boolean
+  isSystemAdmin?: boolean
   designation?: boolean
   allowedRoutes?: boolean
   fullName?: boolean
@@ -733,6 +771,7 @@ export type ProfileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type ProfileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   userId?: boolean
   role?: boolean
+  isSystemAdmin?: boolean
   designation?: boolean
   allowedRoutes?: boolean
   fullName?: boolean
@@ -749,6 +788,7 @@ export type ProfileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type ProfileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   userId?: boolean
   role?: boolean
+  isSystemAdmin?: boolean
   designation?: boolean
   allowedRoutes?: boolean
   fullName?: boolean
@@ -765,6 +805,7 @@ export type ProfileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type ProfileSelectScalar = {
   userId?: boolean
   role?: boolean
+  isSystemAdmin?: boolean
   designation?: boolean
   allowedRoutes?: boolean
   fullName?: boolean
@@ -776,7 +817,7 @@ export type ProfileSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ProfileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "role" | "designation" | "allowedRoutes" | "fullName" | "email" | "contact1" | "contact2" | "shopId" | "createdAt" | "updatedAt", ExtArgs["result"]["profile"]>
+export type ProfileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "role" | "isSystemAdmin" | "designation" | "allowedRoutes" | "fullName" | "email" | "contact1" | "contact2" | "shopId" | "createdAt" | "updatedAt", ExtArgs["result"]["profile"]>
 export type ProfileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   shop?: boolean | Prisma.Profile$shopArgs<ExtArgs>
@@ -799,6 +840,7 @@ export type $ProfilePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     userId: string
     role: string
+    isSystemAdmin: boolean
     designation: string | null
     allowedRoutes: runtime.JsonValue
     fullName: string | null
@@ -1235,6 +1277,7 @@ export interface Prisma__ProfileClient<T, Null = never, ExtArgs extends runtime.
 export interface ProfileFieldRefs {
   readonly userId: Prisma.FieldRef<"Profile", 'String'>
   readonly role: Prisma.FieldRef<"Profile", 'String'>
+  readonly isSystemAdmin: Prisma.FieldRef<"Profile", 'Boolean'>
   readonly designation: Prisma.FieldRef<"Profile", 'String'>
   readonly allowedRoutes: Prisma.FieldRef<"Profile", 'Json'>
   readonly fullName: Prisma.FieldRef<"Profile", 'String'>

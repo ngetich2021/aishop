@@ -603,10 +603,6 @@ export type SaleUncheckedUpdateManyWithoutShopNestedInput = {
   deleteMany?: Prisma.SaleScalarWhereInput | Prisma.SaleScalarWhereInput[]
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type SaleCreateNestedOneWithoutSaleItemsInput = {
   create?: Prisma.XOR<Prisma.SaleCreateWithoutSaleItemsInput, Prisma.SaleUncheckedCreateWithoutSaleItemsInput>
   connectOrCreate?: Prisma.SaleCreateOrConnectWithoutSaleItemsInput
