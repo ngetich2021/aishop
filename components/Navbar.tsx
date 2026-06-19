@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
+import { Loader2 } from "lucide-react";
 
 import { isRouteAllowed }  from "@/lib/permissions";
 import { useTheme }        from "@/components/ThemeProvider";
@@ -77,8 +78,8 @@ function Tip({ label, children }: { label: string; children: React.ReactNode }) 
 
 // ─── Profile Dropdown ─────────────────────────────────────────────────────────
 function ProfileDropdown({
-  name, email, image, role, shopId, isSystemAdmin,
-}: { name?: string | null; email?: string | null; image?: string | null; role?: string; shopId?: string; isSystemAdmin?: boolean }) {
+  name, email, image, role, shopId, isSystemAdmin, onSignOut, signingOut,
+}: { name?: string | null; email?: string | null; image?: string | null; role?: string; shopId?: string; isSystemAdmin?: boolean; onSignOut: () => void; signingOut: boolean }) {
   const isStaff = role === "staff" || role === "manager";
 
   return (
@@ -135,11 +136,12 @@ function ProfileDropdown({
           Billing &amp; Plans
         </Link>
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+          onClick={onSignOut}
+          disabled={signingOut}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium disabled:opacity-60 disabled:pointer-events-none"
         >
-          <IoIosLogOut size={17} />
-          Sign out
+          {signingOut ? <Loader2 size={17} className="animate-spin" /> : <IoIosLogOut size={17} />}
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </div>
     </div>
@@ -310,7 +312,16 @@ export default function Navbar() {
   const [mobileOpen,  setMobileOpen]  = useState(false);
   const [openMenus,   setOpenMenus]   = useState<Record<string, boolean>>({});
   const [showProfile, setShowProfile] = useState(false);
+  const [signingOut,  setSigningOut]  = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setShowProfile(false);
+    setMobileOpen(false);
+    await signOut({ callbackUrl: "/" });
+  }
   const { theme, toggle: toggleTheme } = useTheme();
 
   const pathname = usePathname();
@@ -493,6 +504,8 @@ export default function Navbar() {
                   role={user?.role}
                   shopId={shopId}
                   isSystemAdmin={user?.isSystemAdmin}
+                  onSignOut={handleSignOut}
+                  signingOut={signingOut}
                 />
               )}
             </div>
@@ -553,23 +566,25 @@ export default function Navbar() {
 
           {/* Logout */}
           {collapsed ? (
-            <Tip label="Sign out">
+            <Tip label={signingOut ? "Signing out…" : "Sign out"}>
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex justify-center items-center w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all disabled:opacity-60 disabled:pointer-events-none"
               >
-                <IoIosLogOut size={18} />
+                {signingOut ? <Loader2 size={18} className="animate-spin" /> : <IoIosLogOut size={18} />}
               </button>
             </Tip>
           ) : (
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all disabled:opacity-60 disabled:pointer-events-none"
             >
-              <IoIosLogOut size={18} />
-              <span className="text-[0.8rem] font-semibold">Sign out</span>
+              {signingOut ? <Loader2 size={18} className="animate-spin" /> : <IoIosLogOut size={18} />}
+              <span className="text-[0.8rem] font-semibold">{signingOut ? "Signing out…" : "Sign out"}</span>
             </button>
           )}
         </div>
@@ -655,11 +670,12 @@ export default function Navbar() {
                 <span className="text-[0.8rem] font-semibold">Switch Shops</span>
               </Link>
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all disabled:opacity-60 disabled:pointer-events-none"
               >
-                <IoIosLogOut size={18} />
-                <span className="text-[0.8rem] font-semibold">Sign out</span>
+                {signingOut ? <Loader2 size={18} className="animate-spin" /> : <IoIosLogOut size={18} />}
+                <span className="text-[0.8rem] font-semibold">{signingOut ? "Signing out…" : "Sign out"}</span>
               </button>
             </div>
           </div>

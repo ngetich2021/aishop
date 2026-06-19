@@ -6,7 +6,7 @@ import { usePathname }                       from "next/navigation";
 import { signOut }                           from "next-auth/react";
 import {
   LayoutDashboard, Users, Store, CreditCard, Wallet,
-  Activity, Menu, X, LogOut, Shield, ChevronRight,
+  Activity, Menu, X, LogOut, Shield, ChevronRight, Loader2,
 } from "lucide-react";
 
 interface Props {
@@ -28,8 +28,15 @@ function initials(name: string) {
 }
 
 export default function AdminShell({ children, adminName }: Props) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen,  setMobileOpen]  = useState(false);
+  const [signingOut,  setSigningOut]  = useState(false);
   const pathname = usePathname();
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await signOut({ callbackUrl: "/" });
+  }
 
   const isActive = useCallback(
     (href: string) => href === "/admin" ? pathname === "/admin" : pathname.startsWith(href),
@@ -87,11 +94,12 @@ export default function AdminShell({ children, adminName }: Props) {
           </div>
         </div>
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-150"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-150 disabled:opacity-60 disabled:pointer-events-none"
         >
-          <LogOut size={17} />
-          Sign Out
+          {signingOut ? <Loader2 size={17} className="animate-spin" /> : <LogOut size={17} />}
+          {signingOut ? "Signing out…" : "Sign Out"}
         </button>
       </div>
     </div>
@@ -145,11 +153,12 @@ export default function AdminShell({ children, adminName }: Props) {
               <span className="text-indigo-700 text-xs font-semibold">{adminName}</span>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition border border-red-100"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition border border-red-100 disabled:opacity-60 disabled:pointer-events-none"
             >
-              <LogOut size={13} />
-              <span className="hidden sm:inline">Sign Out</span>
+              {signingOut ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
+              <span className="hidden sm:inline">{signingOut ? "Signing out…" : "Sign Out"}</span>
             </button>
           </div>
         </header>

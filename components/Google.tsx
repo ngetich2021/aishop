@@ -36,7 +36,7 @@ export default function GoogleSignIn({ authError }: { authError?: string }) {
           <div className="pt-10 pb-8 px-8 bg-gradient-to-b from-blue-600 to-blue-700 flex flex-col items-center">
             <div className="relative w-24 h-24 rounded-full ring-8 ring-white/20 shadow-2xl overflow-hidden">
               <Image
-                src="/branton_logo.png"
+                src="/logo.png"
                 alt="Kwenik Logo"
                 fill
                 sizes="96px"

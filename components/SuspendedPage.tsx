@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { signOut } from "next-auth/react";
-import { Lock, CreditCard, LogOut, AlertTriangle, ShieldOff, Layers } from "lucide-react";
+import { Lock, CreditCard, LogOut, AlertTriangle, ShieldOff, Layers, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 type Reason = "demo" | "expired" | "unpaid" | "demo_limit";
@@ -53,7 +54,14 @@ const CONFIG: Record<Reason, {
 };
 
 export default function SuspendedPage({ shopName, userName, isOwner, reason, plan, error }: Props) {
+  const [signingOut, setSigningOut] = useState(false);
   const cfg = CONFIG[reason];
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await signOut({ callbackUrl: "/" });
+  }
 
   const body = (() => {
     switch (reason) {
@@ -138,10 +146,12 @@ export default function SuspendedPage({ shopName, userName, isOwner, reason, pla
         </p>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-red-600 transition"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-red-600 transition disabled:opacity-60 disabled:pointer-events-none"
         >
-          <LogOut size={14} /> Sign out
+          {signingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </div>
     </div>
