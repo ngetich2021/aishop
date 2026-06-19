@@ -430,7 +430,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src="/branton_logo.png"
+              src="/logo.png"
               alt="Kwenik"
               fill
               sizes="32px"
